@@ -1,0 +1,970 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// ============================================
+// 1. TOPIC & TAG VELOCITY
+// ============================================
+
+export interface TopicVelocityData {
+    topic: string;
+    timeSeriesData: {
+        month: string;
+        launchCount: number;
+        avgUpvotes: number;
+        avgComments: number;
+    }[];
+    totalLaunches: number;
+    trend: 'rising' | 'stable' | 'declining';
+}
+
+export async function getTopicVelocity(months = 12): Promise<TopicVelocityData[]> {
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('ai_analysis, votes_count, comments_count, launched_at')
+        .not('ai_analysis', 'is', null)
+        .gte('launched_at', getMonthsAgo(months));
+
+    if (!launches) return [];
+
+    // Group by niche/topic and month
+    const topicMap = new Map<string, Map<string, { launches: any[], votes: number, comments: number }>>();
+
+    launches.forEach(launch => {
+        const niche = launch.ai_analysis?.niche || 'Unknown';
+        const monthKey = getMonthKey(launch.launched_at);
+
+        if (!topicMap.has(niche)) {
+            topicMap.set(niche, new Map());
+        }
+
+        const nicheData = topicMap.get(niche)!;
+        if (!nicheData.has(monthKey)) {
+            nicheData.set(monthKey, { launches: [], votes: 0, comments: 0 });
+        }
+
+        const monthData = nicheData.get(monthKey)!;
+        monthData.launches.push(launch);
+        monthData.votes += launch.votes_count || 0;
+        monthData.comments += launch.comments_count || 0;
+    });
+
+    // Convert to array and calculate metrics
+    const results: TopicVelocityData[] = [];
+
+    topicMap.forEach((monthsData, topic) => {
+        const timeSeriesData = Array.from(monthsData.entries())
+            .map(([month, data]) => ({
+                month,
+                launchCount: data.launches.length,
+                avgUpvotes: Math.round(data.votes / data.launches.length),
+                avgComments: Math.round(data.comments / data.launches.length),
+            }))
+            .sort((a, b) => a.month.localeCompare(b.month));
+
+        const totalLaunches = timeSeriesData.reduce((sum, d) => sum + d.launchCount, 0);
+
+        // Calculate trend
+        const recentHalf = timeSeriesData.slice(-Math.ceil(timeSeriesData.length / 2));
+        const olderHalf = timeSeriesData.slice(0, Math.floor(timeSeriesData.length / 2));
+        const recentAvg = recentHalf.reduce((sum, d) => sum + d.launchCount, 0) / recentHalf.length;
+        const olderAvg = olderHalf.reduce((sum, d) => sum + d.launchCount, 0) / olderHalf.length;
+
+        let trend: 'rising' | 'stable' | 'declining' = 'stable';
+        if (recentAvg > olderAvg * 1.3) trend = 'rising';
+        else if (recentAvg < olderAvg * 0.7) trend = 'declining';
+
+        results.push({
+            topic,
+            timeSeriesData,
+            totalLaunches,
+            trend,
+        });
+    });
+
+    return results.sort((a, b) => b.totalLaunches - a.totalLaunches).slice(0, 10);
+}
+
+// ============================================
+// 2. KEYWORD TREND ANALYZER
+// ============================================
+
+export interface KeywordTrendData {
+    keyword: string;
+    monthlyData: {
+        month: string;
+        mentions: number;
+        avgUpvotes: number;
+        products: { name: string; votes: number }[];
+    }[];
+    totalMentions: number;
+    averageSuccess: number;
+}
+
+export async function getKeywordTrends(keyword: string, months = 12): Promise<KeywordTrendData | null> {
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('name, description, tagline, votes_count, launched_at, ai_analysis')
+        .gte('launched_at', getMonthsAgo(months));
+
+    if (!launches) return null;
+
+    const keywordLower = keyword.toLowerCase();
+    const matchingLaunches = launches.filter(l => {
+        const searchText = [l.name, l.description, l.tagline, l.ai_analysis?.problem].join(' ').toLowerCase();
+        return searchText.includes(keywordLower);
+    });
+
+    // Group by month
+    const monthMap = new Map<string, { launches: any[], totalVotes: number }>();
+
+    matchingLaunches.forEach(launch => {
+        const monthKey = getMonthKey(launch.launched_at);
+        if (!monthMap.has(monthKey)) {
+            monthMap.set(monthKey, { launches: [], totalVotes: 0 });
+        }
+
+        const monthData = monthMap.get(monthKey)!;
+        monthData.launches.push(launch);
+        monthData.totalVotes += launch.votes_count || 0;
+    });
+
+    const monthlyData = Array.from(monthMap.entries())
+        .map(([month, data]) => ({
+            month,
+            mentions: data.launches.length,
+            avgUpvotes: data.launches.length > 0 ? Math.round(data.totalVotes / data.launches.length) : 0,
+            products: data.launches
+                .sort((a, b) => (b.votes_count || 0) - (a.votes_count || 0))
+                .slice(0, 5)
+                .map(l => ({ name: l.name, votes: l.votes_count || 0 })),
+        }))
+        .sort((a, b) => a.month.localeCompare(b.month));
+
+    const totalMentions = matchingLaunches.length;
+    const totalVotes = matchingLaunches.reduce((sum, l) => sum + (l.votes_count || 0), 0);
+    const averageSuccess = totalMentions > 0 ? Math.round(totalVotes / totalMentions) : 0;
+
+    return {
+        keyword,
+        monthlyData,
+        totalMentions,
+        averageSuccess,
+    };
+}
+
+// ============================================
+// 3. CATEGORY PERFORMANCE MATRIX
+// ============================================
+
+export interface CategoryPerformanceData {
+    category: string;
+    launchCount: number;
+    avgUpvotes: number;
+    avgComments: number;
+    saturationScore: number; // 0-100, higher = more saturated
+}
+
+export async function getCategoryPerformanceMatrix(): Promise<CategoryPerformanceData[]> {
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('ai_analysis, votes_count, comments_count')
+        .not('ai_analysis', 'is', null);
+
+    if (!launches) return [];
+
+    const categoryMap = new Map<string, { launches: any[], totalVotes: number, totalComments: number }>();
+
+    launches.forEach(launch => {
+        const niche = launch.ai_analysis?.niche || 'Unknown';
+        if (!categoryMap.has(niche)) {
+            categoryMap.set(niche, { launches: [], totalVotes: 0, totalComments: 0 });
+        }
+
+        const catData = categoryMap.get(niche)!;
+        catData.launches.push(launch);
+        catData.totalVotes += launch.votes_count || 0;
+        catData.totalComments += launch.comments_count || 0;
+    });
+
+    const results: CategoryPerformanceData[] = [];
+
+    categoryMap.forEach((data, category) => {
+        const launchCount = data.launches.length;
+        const avgUpvotes = Math.round(data.totalVotes / launchCount);
+        const avgComments = Math.round(data.totalComments / launchCount);
+
+        // Saturation score: high launches + low engagement = saturated
+        const normalizedLaunches = Math.min(launchCount / 100, 1); // Cap at 100 launches
+        const normalizedEngagement = Math.min(avgUpvotes / 500, 1); // Cap at 500 upvotes
+        const saturationScore = Math.round((normalizedLaunches * 70 + (1 - normalizedEngagement) * 30) * 100);
+
+        results.push({
+            category,
+            launchCount,
+            avgUpvotes,
+            avgComments,
+            saturationScore,
+        });
+    });
+
+    return results.filter(r => r.launchCount >= 5).sort((a, b) => b.launchCount - a.launchCount);
+}
+
+// ============================================
+// 4. NICHE SUCCESS HISTOGRAM
+// ============================================
+
+export interface NicheHistogramData {
+    niche: string;
+    buckets: {
+        range: string;
+        count: number;
+        percentage: number;
+    }[];
+    stats: {
+        median: number;
+        p90: number;
+        p99: number;
+        total: number;
+    };
+}
+
+export async function getNicheSuccessHistogram(niche: string): Promise<NicheHistogramData | null> {
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('votes_count, ai_analysis')
+        .not('ai_analysis', 'is', null);
+
+    if (!launches) return null;
+
+    const nicheLaunches = launches.filter(l => l.ai_analysis?.niche === niche);
+
+    if (nicheLaunches.length === 0) return null;
+
+    const votes = nicheLaunches.map(l => l.votes_count || 0).sort((a, b) => a - b);
+
+    // Define buckets
+    const bucketRanges = [
+        { range: '0-50', min: 0, max: 50 },
+        { range: '51-100', min: 51, max: 100 },
+        { range: '101-200', min: 101, max: 200 },
+        { range: '201-500', min: 201, max: 500 },
+        { range: '501-1000', min: 501, max: 1000 },
+        { range: '1000+', min: 1001, max: Infinity },
+    ];
+
+    const buckets = bucketRanges.map(({ range, min, max }) => {
+        const count = votes.filter(v => v >= min && v <= max).length;
+        const percentage = Math.round((count / votes.length) * 100);
+        return { range, count, percentage };
+    });
+
+    // Calculate percentiles
+    const median = percentile(votes, 50);
+    const p90 = percentile(votes, 90);
+    const p99 = percentile(votes, 99);
+
+    return {
+        niche,
+        buckets,
+        stats: {
+            median,
+            p90,
+            p99,
+            total: votes.length,
+        },
+    };
+}
+
+// ============================================
+// 5. PRODUCT SCATTER DATA (Votes vs Comments)
+// ============================================
+
+export interface ProductScatterPoint {
+    name: string;
+    votes: number;
+    comments: number;
+    niche: string;
+    productType: 'Community Darling' | 'Pure Utility' | 'Niche Product' | 'Low Engagement';
+}
+
+export async function getProductScatterData(category?: string): Promise<ProductScatterPoint[]> {
+    let query = supabase
+        .from('ph_launches')
+        .select('name, votes_count, comments_count, ai_analysis')
+        .not('ai_analysis', 'is', null)
+        .gte('votes_count', 50); // Only show products with meaningful data
+
+    const { data: launches } = await query;
+
+    if (!launches) return [];
+
+    let filtered = launches;
+    if (category) {
+        filtered = launches.filter(l => l.ai_analysis?.niche === category);
+    }
+
+    return filtered.map(l => {
+        const votes = l.votes_count || 0;
+        const comments = l.comments_count || 0;
+        const commentToVoteRatio = votes > 0 ? comments / votes : 0;
+
+        let productType: ProductScatterPoint['productType'] = 'Niche Product';
+
+        if (votes > 400 && comments > 100) productType = 'Community Darling';
+        else if (votes > 300 && commentToVoteRatio < 0.15) productType = 'Pure Utility';
+        else if (votes < 150 && comments < 30) productType = 'Low Engagement';
+
+        return {
+            name: l.name,
+            votes,
+            comments,
+            niche: l.ai_analysis?.niche || 'Unknown',
+            productType,
+        };
+    });
+}
+
+// ============================================
+// 6. FEATURE/LANGUAGE CORRELATION
+// ============================================
+
+export interface FeatureCorrelation {
+    keyword: string;
+    occurrences: number;
+    avgUpvotesWithKeyword: number;
+    avgUpvotesWithout: number;
+    uplift: number; // Percentage increase
+}
+
+export async function getFeatureCorrelation(category: string): Promise<FeatureCorrelation[]> {
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('description, tagline, votes_count, ai_analysis')
+        .not('ai_analysis', 'is', null);
+
+    if (!launches) return [];
+
+    const categoryLaunches = launches.filter(l => l.ai_analysis?.niche === category);
+
+    // Common keywords to test
+    const keywords = [
+        'AI',
+        'AI-powered',
+        'free',
+        'open source',
+        'no-code',
+        'automation',
+        'analytics',
+        'collaboration',
+        'real-time',
+        'integration',
+        'Chrome extension',
+        'API',
+        'dashboard',
+        'mobile',
+    ];
+
+    const results: FeatureCorrelation[] = [];
+
+    keywords.forEach(keyword => {
+        const keywordLower = keyword.toLowerCase();
+        const withKeyword = categoryLaunches.filter(l => {
+            const text = [l.description, l.tagline].join(' ').toLowerCase();
+            return text.includes(keywordLower);
+        });
+
+        const withoutKeyword = categoryLaunches.filter(l => {
+            const text = [l.description, l.tagline].join(' ').toLowerCase();
+            return !text.includes(keywordLower);
+        });
+
+        if (withKeyword.length < 3) return; // Need at least 3 samples
+
+        const avgWithKeyword = withKeyword.reduce((sum, l) => sum + (l.votes_count || 0), 0) / withKeyword.length;
+        const avgWithout = withoutKeyword.length > 0
+            ? withoutKeyword.reduce((sum, l) => sum + (l.votes_count || 0), 0) / withoutKeyword.length
+            : 0;
+
+        const uplift = avgWithout > 0 ? Math.round(((avgWithKeyword - avgWithout) / avgWithout) * 100) : 0;
+
+        results.push({
+            keyword,
+            occurrences: withKeyword.length,
+            avgUpvotesWithKeyword: Math.round(avgWithKeyword),
+            avgUpvotesWithout: Math.round(avgWithout),
+            uplift,
+        });
+    });
+
+    return results.filter(r => Math.abs(r.uplift) > 5).sort((a, b) => b.uplift - a.uplift);
+}
+
+// ============================================
+// 7. AUDIENCE IMPACT (Twitter Followers vs Upvotes)
+// ============================================
+
+export interface AudienceImpactPoint {
+    makerName: string;
+    productName: string;
+    followers: number;
+    upvotes: number;
+}
+
+export async function getAudienceImpact(): Promise<AudienceImpactPoint[]> {
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('name, votes_count, makers')
+        .not('makers', 'is', null);
+
+    if (!launches) return [];
+
+    const points: AudienceImpactPoint[] = [];
+
+    launches.forEach(launch => {
+        const makers = launch.makers as any[];
+        if (!makers || !Array.isArray(makers)) return;
+
+        makers.forEach(maker => {
+            if (maker.twitter_username && maker.twitter_followers) {
+                points.push({
+                    makerName: maker.name || maker.twitter_username,
+                    productName: launch.name,
+                    followers: maker.twitter_followers,
+                    upvotes: launch.votes_count || 0,
+                });
+            }
+        });
+    });
+
+    return points.filter(p => p.followers > 0 && p.upvotes > 0);
+}
+
+// ============================================
+// 8. SERIAL MAKER SUCCESS
+// ============================================
+
+export interface SerialMakerData {
+    launchNumber: string;
+    avgUpvotes: number;
+    count: number;
+}
+
+export async function getSerialMakerSuccess(): Promise<SerialMakerData[]> {
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('votes_count, makers, launched_at')
+        .not('makers', 'is', null)
+        .order('launched_at', { ascending: true });
+
+    if (!launches) return [];
+
+    // Track maker launch history
+    const makerHistory = new Map<string, { launches: { votes: number; date: string }[] }>();
+
+    launches.forEach(launch => {
+        const makers = launch.makers as any[];
+        if (!makers || !Array.isArray(makers)) return;
+
+        makers.forEach(maker => {
+            const makerKey = maker.twitter_username || maker.name;
+            if (!makerKey) return;
+
+            if (!makerHistory.has(makerKey)) {
+                makerHistory.set(makerKey, { launches: [] });
+            }
+
+            makerHistory.get(makerKey)!.launches.push({
+                votes: launch.votes_count || 0,
+                date: launch.launched_at,
+            });
+        });
+    });
+
+    // Calculate averages by launch number
+    const launchNumberData = new Map<number, { totalVotes: number; count: number }>();
+
+    makerHistory.forEach(history => {
+        if (history.launches.length < 2) return; // Only serial makers
+
+        history.launches.forEach((launch, index) => {
+            const launchNum = index + 1;
+            if (!launchNumberData.has(launchNum)) {
+                launchNumberData.set(launchNum, { totalVotes: 0, count: 0 });
+            }
+
+            const data = launchNumberData.get(launchNum)!;
+            data.totalVotes += launch.votes;
+            data.count += 1;
+        });
+    });
+
+    const results: SerialMakerData[] = [];
+    launchNumberData.forEach((data, launchNum) => {
+        if (launchNum <= 5) { // Only show first 5 launches
+            results.push({
+                launchNumber: launchNum === 1 ? '1st' : launchNum === 2 ? '2nd' : launchNum === 3 ? '3rd' : `${launchNum}th`,
+                avgUpvotes: Math.round(data.totalVotes / data.count),
+                count: data.count,
+            });
+        }
+    });
+
+    return results.sort((a, b) => parseInt(a.launchNumber) - parseInt(b.launchNumber));
+}
+
+// ============================================
+// 9. LAUNCH TIME HEATMAP
+// ============================================
+
+export interface LaunchTimeData {
+    day: string;
+    hour: number;
+    avgUpvotes: number;
+    launchCount: number;
+}
+
+export async function getLaunchTimeHeatmap(): Promise<LaunchTimeData[]> {
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('votes_count, launched_at, rank_of_day')
+        .gte('rank_of_day', 1)
+        .lte('rank_of_day', 5); // Only look at top 5 products of the day
+
+    if (!launches) return [];
+
+    const heatmapData = new Map<string, { totalVotes: number; count: number }>();
+
+    launches.forEach(launch => {
+        const date = new Date(launch.launched_at);
+        const day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][date.getUTCDay()];
+        const hour = date.getUTCHours(); // PST is typically UTC-8 or UTC-7, but we'll use UTC for global launches
+
+        const key = `${day}-${hour}`;
+
+        if (!heatmapData.has(key)) {
+            heatmapData.set(key, { totalVotes: 0, count: 0 });
+        }
+
+        const data = heatmapData.get(key)!;
+        data.totalVotes += launch.votes_count || 0;
+        data.count += 1;
+    });
+
+    const results: LaunchTimeData[] = [];
+
+    heatmapData.forEach((data, key) => {
+        const [day, hourStr] = key.split('-');
+        results.push({
+            day,
+            hour: parseInt(hourStr),
+            avgUpvotes: Math.round(data.totalVotes / data.count),
+            launchCount: data.count,
+        });
+    });
+
+    return results;
+}
+
+// ============================================
+// 10. MARKET GAPS (Blue Ocean Opportunities)
+// ============================================
+
+export interface MarketGap {
+    problem: string;
+    icp: string;
+    niche: string;
+    currentProducts: number;
+    avgEngagement: number;
+    opportunityScore: number;
+    reasoning: string;
+}
+
+export async function getMarketGaps(): Promise<MarketGap[]> {
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('votes_count, comments_count, ai_analysis')
+        .not('ai_analysis', 'is', null);
+
+    if (!launches) return [];
+
+    // Group by ICP + Problem combination
+    const combinationMap = new Map<string, {
+        icp: string;
+        problem: string;
+        niche: string;
+        products: any[];
+        totalEngagement: number;
+    }>();
+
+    launches.forEach(launch => {
+        const icp = launch.ai_analysis?.icp;
+        const problem = launch.ai_analysis?.problem;
+        const niche = launch.ai_analysis?.niche;
+
+        if (!icp || !problem || !niche) return;
+
+        const key = `${icp}|${problem}`;
+
+        if (!combinationMap.has(key)) {
+            combinationMap.set(key, {
+                icp,
+                problem,
+                niche,
+                products: [],
+                totalEngagement: 0,
+            });
+        }
+
+        const data = combinationMap.get(key)!;
+        data.products.push(launch);
+        data.totalEngagement += (launch.votes_count || 0) + (launch.comments_count || 0) * 2;
+    });
+
+    // Find gaps: low product count + high engagement potential
+    const gaps: MarketGap[] = [];
+
+    combinationMap.forEach(data => {
+        const productCount = data.products.length;
+        const avgEngagement = Math.round(data.totalEngagement / productCount);
+
+        // Opportunity = high engagement but low competition
+        if (productCount <= 3 && avgEngagement > 200) {
+            const opportunityScore = Math.round(
+                (avgEngagement * 0.6) + // Higher engagement = better
+                ((10 - productCount) * 50) // Fewer products = better
+            );
+
+            gaps.push({
+                problem: data.problem,
+                icp: data.icp,
+                niche: data.niche,
+                currentProducts: productCount,
+                avgEngagement,
+                opportunityScore,
+                reasoning: `Only ${productCount} product(s) addressing this for ${data.icp}, with ${avgEngagement} avg engagement. Clear demand with low supply.`,
+            });
+        }
+    });
+
+    return gaps.sort((a, b) => b.opportunityScore - a.opportunityScore).slice(0, 20);
+}
+
+// ============================================
+// ADDITIONAL ANALYTICS
+// ============================================
+
+// Team Size Impact
+export async function getTeamSizeImpact() {
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('votes_count, makers')
+        .not('makers', 'is', null);
+
+    if (!launches) return [];
+
+    const teamSizeMap = new Map<number, { totalVotes: number; count: number }>();
+
+    launches.forEach(launch => {
+        const makers = launch.makers as any[];
+        if (!makers || !Array.isArray(makers)) return;
+
+        const teamSize = Math.min(makers.length, 5); // Cap at 5+
+
+        if (!teamSizeMap.has(teamSize)) {
+            teamSizeMap.set(teamSize, { totalVotes: 0, count: 0 });
+        }
+
+        const data = teamSizeMap.get(teamSize)!;
+        data.totalVotes += launch.votes_count || 0;
+        data.count += 1;
+    });
+
+    const results = Array.from(teamSizeMap.entries()).map(([size, data]) => ({
+        teamSize: size >= 5 ? '5+' : size.toString(),
+        avgUpvotes: Math.round(data.totalVotes / data.count),
+        productCount: data.count,
+    }));
+
+    return results.sort((a, b) => parseInt(a.teamSize) - parseInt(b.teamSize));
+}
+
+// Market Health Metrics
+export async function getMarketHealth() {
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('votes_count, comments_count, launched_at')
+        .gte('launched_at', getMonthsAgo(6));
+
+    if (!launches) return null;
+
+    const totalProducts = launches.length;
+    const avgUpvotes = Math.round(launches.reduce((sum, l) => sum + (l.votes_count || 0), 0) / totalProducts);
+    const avgComments = Math.round(launches.reduce((sum, l) => sum + (l.comments_count || 0), 0) / totalProducts);
+
+    const highPerformers = launches.filter(l => (l.votes_count || 0) > 500).length;
+    const successRate = Math.round((highPerformers / totalProducts) * 100);
+
+    return {
+        totalProducts,
+        avgUpvotes,
+        avgComments,
+        highPerformers,
+        successRate,
+    };
+}
+
+// Top Categories by Various Metrics
+export async function getTopCategories(metric: 'launches' | 'engagement' | 'growth' = 'launches') {
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('ai_analysis, votes_count, comments_count, launched_at')
+        .not('ai_analysis', 'is', null);
+
+    if (!launches) return [];
+
+    const categoryMap = new Map<string, {
+        launches: number;
+        totalEngagement: number;
+        recentLaunches: number;
+        oldLaunches: number;
+    }>();
+
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    launches.forEach(launch => {
+        const niche = launch.ai_analysis?.niche || 'Unknown';
+        if (!categoryMap.has(niche)) {
+            categoryMap.set(niche, { launches: 0, totalEngagement: 0, recentLaunches: 0, oldLaunches: 0 });
+        }
+
+        const data = categoryMap.get(niche)!;
+        data.launches += 1;
+        data.totalEngagement += (launch.votes_count || 0) + (launch.comments_count || 0) * 2;
+
+        if (new Date(launch.launched_at) > sixMonthsAgo) {
+            data.recentLaunches += 1;
+        } else {
+            data.oldLaunches += 1;
+        }
+    });
+
+    const results = Array.from(categoryMap.entries()).map(([category, data]) => {
+        const growthRate = data.oldLaunches > 0
+            ? Math.round(((data.recentLaunches - data.oldLaunches) / data.oldLaunches) * 100)
+            : 100;
+
+        return {
+            category,
+            launches: data.launches,
+            avgEngagement: Math.round(data.totalEngagement / data.launches),
+            growthRate,
+        };
+    });
+
+    // Sort by selected metric
+    if (metric === 'launches') {
+        return results.sort((a, b) => b.launches - a.launches).slice(0, 10);
+    } else if (metric === 'engagement') {
+        return results.sort((a, b) => b.avgEngagement - a.avgEngagement).slice(0, 10);
+    } else {
+        return results.sort((a, b) => b.growthRate - a.growthRate).slice(0, 10);
+    }
+}
+
+// ============================================
+// MARKET GAP FINDER (2x2 Matrix for Blue Ocean Opportunities)
+// ============================================
+
+export interface MarketGapMatrix {
+    category: string;
+    launchVolume: number; // X-axis: Competition/Saturation
+    avgUpvotes: number; // Y-axis: Demand/Interest
+    avgComments: number;
+    quadrant: 'blue-ocean' | 'red-ocean' | 'niche' | 'emerging';
+    opportunityScore: number;
+}
+
+export async function getMarketGapMatrix(): Promise<MarketGapMatrix[]> {
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('ai_analysis, votes_count, comments_count')
+        .not('ai_analysis', 'is', null);
+
+    if (!launches) return [];
+
+    const categoryMap = new Map<string, { launches: any[], totalVotes: number, totalComments: number }>();
+
+    launches.forEach(launch => {
+        const category = launch.ai_analysis?.niche || 'Unknown';
+        if (!categoryMap.has(category)) {
+            categoryMap.set(category, { launches: [], totalVotes: 0, totalComments: 0 });
+        }
+
+        const data = categoryMap.get(category)!;
+        data.launches.push(launch);
+        data.totalVotes += launch.votes_count || 0;
+        data.totalComments += launch.comments_count || 0;
+    });
+
+    const results: MarketGapMatrix[] = [];
+
+    // Calculate median values for quadrant assignment
+    const allVolumes = Array.from(categoryMap.values()).map(d => d.launches.length);
+    const allAvgUpvotes = Array.from(categoryMap.values()).map(d => d.totalVotes / d.launches.length);
+    const medianVolume = median(allVolumes);
+    const medianUpvotes = median(allAvgUpvotes);
+
+    categoryMap.forEach((data, category) => {
+        const launchVolume = data.launches.length;
+        const avgUpvotes = Math.round(data.totalVotes / launchVolume);
+        const avgComments = Math.round(data.totalComments / launchVolume);
+
+        // Determine quadrant
+        let quadrant: MarketGapMatrix['quadrant'];
+        if (launchVolume < medianVolume && avgUpvotes > medianUpvotes) {
+            quadrant = 'blue-ocean'; // LOW competition, HIGH demand
+        } else if (launchVolume > medianVolume && avgUpvotes > medianUpvotes) {
+            quadrant = 'red-ocean'; // HIGH competition, HIGH demand
+        } else if (launchVolume < medianVolume && avgUpvotes < medianUpvotes) {
+            quadrant = 'niche'; // LOW competition, LOW demand
+        } else {
+            quadrant = 'emerging'; // HIGH competition, LOW demand
+        }
+
+        // Opportunity score (higher = better opportunity)
+        // Blue ocean gets highest score, red ocean gets moderate, rest gets low
+        const demandScore = (avgUpvotes / medianUpvotes) * 100;
+        const competitionPenalty = (launchVolume / medianVolume) * 50;
+        const opportunityScore = Math.round(demandScore - competitionPenalty);
+
+        results.push({
+            category,
+            launchVolume,
+            avgUpvotes,
+            avgComments,
+            quadrant,
+            opportunityScore
+        });
+    });
+
+    // Filter to categories with at least 5 products
+    return results
+        .filter(r => r.launchVolume >= 5)
+        .sort((a, b) => b.opportunityScore - a.opportunityScore);
+}
+
+// Helper function for median
+function median(arr: number[]): number {
+    const sorted = [...arr].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 0
+        ? (sorted[mid - 1] + sorted[mid]) / 2
+        : sorted[mid];
+}
+
+// ============================================
+// TOP 3 CATEGORIES BY UPVOTES VS PRODUCTS
+// ============================================
+
+export interface Top3CategoryData {
+    category: string;
+    totalUpvotes: number;
+    productCount: number;
+    avgUpvotes: number;
+}
+
+export async function getTop3Categories(): Promise<Top3CategoryData[]> {
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('ai_analysis, votes_count')
+        .not('ai_analysis', 'is', null);
+
+    if (!launches) return [];
+
+    const categoryMap = new Map<string, { totalUpvotes: number; productCount: number }>();
+
+    launches.forEach(launch => {
+        const niche = launch.ai_analysis?.niche || 'Unknown';
+        if (!categoryMap.has(niche)) {
+            categoryMap.set(niche, { totalUpvotes: 0, productCount: 0 });
+        }
+
+        const data = categoryMap.get(niche)!;
+        data.totalUpvotes += launch.votes_count || 0;
+        data.productCount += 1;
+    });
+
+    const results: Top3CategoryData[] = Array.from(categoryMap.entries())
+        .map(([category, data]) => ({
+            category,
+            totalUpvotes: data.totalUpvotes,
+            productCount: data.productCount,
+            avgUpvotes: Math.round(data.totalUpvotes / data.productCount),
+        }))
+        .sort((a, b) => b.totalUpvotes - a.totalUpvotes)
+        .slice(0, 3);
+
+    return results;
+}
+
+// ============================================
+// VOTE DISTRIBUTION ACROSS PRODUCTS AND TAGS
+// ============================================
+
+export interface VoteDistributionData {
+    productName: string;
+    votes: number;
+    tags: string[];
+    tagCount: number;
+}
+
+export async function getVoteDistribution(): Promise<VoteDistributionData[]> {
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('name, votes_count, topics')
+        .gte('votes_count', 50) // Only meaningful products
+        .order('votes_count', { ascending: false })
+        .limit(100);
+
+    if (!launches) return [];
+
+    return launches.map(launch => {
+        const topics = launch.topics as any[];
+        const tags = topics ? topics.map((t: any) => t.name || t).filter(Boolean) : [];
+
+        return {
+            productName: launch.name,
+            votes: launch.votes_count || 0,
+            tags,
+            tagCount: tags.length,
+        };
+    });
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+function getMonthsAgo(months: number): string {
+    const date = new Date();
+    date.setMonth(date.getMonth() - months);
+    return date.toISOString();
+}
+
+function getMonthKey(dateString: string): string {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+}
+
+function percentile(sortedArray: number[], p: number): number {
+    const index = Math.ceil((p / 100) * sortedArray.length) - 1;
+    return sortedArray[Math.max(0, index)] || 0;
+}
+
