@@ -118,16 +118,22 @@ export async function POST(request: NextRequest) {
 
         // Handle events
         switch (event.type) {
+            case 'membership.went_valid':
+            case 'membership.activated':
             case 'membership_went_valid':
             case 'membership_activated':
                 await handleMembershipActivated(event.data);
                 break;
 
+            case 'membership.went_invalid':
+            case 'membership.deactivated':
             case 'membership_went_invalid':
             case 'membership_deactivated':
                 await handleMembershipDeactivated(event.data);
                 break;
 
+            case 'payment.succeeded':
+            case 'invoice.paid':
             case 'payment_succeeded':
             case 'invoice_paid':
                 await handlePaymentSucceeded(event.data);
