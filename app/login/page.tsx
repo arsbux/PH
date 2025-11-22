@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Loader2, ArrowRight, Mail, Lock, Github, CheckCircle2, Sparkles } from 'lucide-react';
+import { Loader2, ArrowRight, Mail, Lock } from 'lucide-react';
 
 export default function AuthPage() {
-  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,62 +18,27 @@ export default function AuthPage() {
   const supabase = createClient();
   const next = searchParams.get('next') || '/desk';
 
-  // Toggle between Login and Sign Up
-  const toggleMode = () => {
-    setIsSignUp(!isSignUp);
-    setMessage(null);
-  };
-
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
 
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback?next=${next}`,
-          },
-        });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        setMessage({
-          text: 'Account created! Please check your email to confirm.',
-          type: 'success'
-        });
+      // CRITICAL: Refresh router to ensure middleware sees the new cookie
+      router.refresh();
 
-        // Optional: Auto-login logic if email confirmation is disabled
-        // await signIn(); 
-
-      } else {
-        await signIn();
-      }
+      // Redirect
+      router.push(next);
     } catch (error: any) {
       setMessage({ text: error.message, type: 'error' });
       setLoading(false);
-    }
-  };
-
-  const signIn = async () => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) throw error;
-
-    // CRITICAL: Refresh router to ensure middleware sees the new cookie
-    router.refresh();
-
-    // Redirect
-    if (next.includes('checkout=true')) {
-      window.location.href = '/api/whop/checkout';
-    } else {
-      router.push(next);
     }
   };
 
@@ -113,12 +77,10 @@ export default function AuthPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold mb-2 tracking-tight">
-              {isSignUp ? 'Create your account' : 'Welcome back'}
+              Welcome back
             </h1>
             <p className="text-neutral-400">
-              {isSignUp
-                ? 'Start validating your ideas today.'
-                : 'Enter your details to access your workspace.'}
+              Enter your credentials to access your workspace
             </p>
           </div>
 
@@ -148,7 +110,7 @@ export default function AuthPage() {
               </div>
             </div>
 
-            <form onSubmit={handleAuth} className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-300 mb-1.5">Email</label>
                 <div className="relative">
@@ -180,9 +142,8 @@ export default function AuthPage() {
               </div>
 
               {message && (
-                <div className={`p-3 rounded-lg text-sm flex items-center gap-2 ${message.type === 'success' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                <div className={`p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
                   }`}>
-                  {message.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 rounded-full bg-red-400/20 flex items-center justify-center">!</div>}
                   {message.text}
                 </div>
               )}
@@ -196,8 +157,7 @@ export default function AuthPage() {
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    {isSignUp ? 'Create Account' : 'Sign In'}
-                    <ArrowRight className="w-5 h-5" />
+                    Sign In <ArrowRight className="w-5 h-5" />
                   </>
                 )}
               </button>
@@ -207,13 +167,10 @@ export default function AuthPage() {
           {/* Footer */}
           <div className="text-center mt-6">
             <p className="text-neutral-400 text-sm">
-              {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
-              <button
-                onClick={toggleMode}
-                className="text-orange-500 hover:text-orange-400 font-medium transition-colors"
-              >
-                {isSignUp ? 'Sign in' : 'Sign up'}
-              </button>
+              Don't have an account?{' '}
+              <Link href="/pricing" className="text-orange-500 hover:text-orange-400 font-medium transition-colors">
+                Get started
+              </Link>
             </p>
           </div>
 

@@ -3,48 +3,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Check, ArrowRight, Sparkles, TrendingUp, Target, ShieldCheck, BarChart3, Zap } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase-browser';
 
 export default function PricingPage() {
-    const searchParams = useSearchParams();
-    const router = useRouter();
-    const supabase = createClient();
-    const [isLoading, setIsLoading] = useState(true);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-    useEffect(() => {
-        checkAuth();
-    }, []);
-
-    // Check if user is logged in
-    const checkAuth = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        setIsAuthenticated(!!session);
-        setIsLoading(false);
-
-        // If checkout=true param is present AND user is logged in, redirect to checkout
-        if (searchParams.get('checkout') === 'true' && session) {
-            window.location.href = '/api/whop/checkout';
-        }
-        // If checkout=true but NOT logged in, redirect to login
-        else if (searchParams.get('checkout') === 'true' && !session) {
-            router.push('/login?next=/pricing?checkout=true');
-        }
-    };
-
-    const handleGetStarted = () => {
-        if (isAuthenticated) {
-            // User is logged in -> Go to Checkout
-            window.location.href = '/api/whop/checkout';
-        } else {
-            // User is NOT logged in -> Go to Login first
-            // We pass ?next=/pricing?checkout=true so they come back here and auto-redirect
-            router.push('/login?next=/pricing?checkout=true');
-        }
-    };
-
     const features = [
         { icon: TrendingUp, text: 'Real-time trend velocity tracking' },
         { icon: Target, text: 'Blue Ocean market gap analysis' },
@@ -70,12 +30,12 @@ export default function PricingPage() {
                         <Link href="/#features" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">
                             Features
                         </Link>
-                        <button
-                            onClick={handleGetStarted}
-                            className="text-sm font-semibold bg-white text-black px-5 py-2.5 rounded-full hover:bg-neutral-200 transition-all"
+                        <Link
+                            href="/login"
+                            className="text-sm font-semibold text-neutral-400 hover:text-white transition-colors"
                         >
-                            {isAuthenticated ? 'Upgrade Now' : 'Get Started'}
-                        </button>
+                            Login
+                        </Link>
                     </div>
                 </div>
             </nav>
@@ -109,19 +69,12 @@ export default function PricingPage() {
                             </div>
                             <p className="text-neutral-400 text-sm mb-8">Cancel anytime. No hidden fees.</p>
 
-                            <button
-                                onClick={handleGetStarted}
+                            <Link
+                                href="/api/whop/checkout"
                                 className="w-full py-4 px-6 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-orange-900/20 flex items-center justify-center gap-2"
                             >
-                                {isLoading ? (
-                                    <span>Loading...</span>
-                                ) : (
-                                    <>
-                                        {isAuthenticated ? 'Proceed to Checkout' : 'Create Account & Subscribe'}
-                                        <ArrowRight className="w-5 h-5" />
-                                    </>
-                                )}
-                            </button>
+                                Get Started <ArrowRight className="w-5 h-5" />
+                            </Link>
 
                             <div className="mt-8 space-y-4 text-left">
                                 {features.map((feature, index) => (
