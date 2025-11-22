@@ -155,7 +155,7 @@ export default function Home() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
             </span>
-            Analyzing 15,000+ launches in real-time
+            Analyzing 10,000+ launches in real-time
           </div>
 
           <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight text-white mb-8 max-w-4xl mx-auto leading-[1.1]">
@@ -166,7 +166,7 @@ export default function Home() {
           </h1>
 
           <p className="text-xl text-neutral-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Analyze 50,000+ launches. Uncover winning patterns, spot exploding niches, and validate your next big idea with data—not guesswork.
+            Analyze 10,000+ launches. Uncover winning patterns, spot exploding niches, and validate your next big idea with data—not guesswork.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
