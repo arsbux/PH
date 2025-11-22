@@ -23,28 +23,37 @@ export default function SuccessPage() {
 
             if (!session) {
                 // User needs to sign in first
-                // Redirect to login with return URL
                 router.push('/login?redirected=true&message=Please sign in to access your subscription');
                 return;
             }
 
             setUser(session.user);
 
-            // Wait a moment for webhook to process (if user just paid)
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Call the sync endpoint to pull latest status from Whop
+            const response = await fetch('/api/auth/sync-status');
+            const data = await response.json();
 
-            // Check subscription status
-            const { data: userData } = await supabase
-                .from('users')
-                .select('subscription_status')
-                .eq('id', session.user.id)
-                .single();
-
-            if (userData?.subscription_status === 'active' || userData?.subscription_status === 'trialing') {
+            if (data.success) {
                 setStatus('success');
+                // Optional: Auto-redirect after a few seconds
+                setTimeout(() => {
+                    router.push('/desk');
+                }, 3000);
             } else {
-                // Subscription not yet synced, but that's okay
-                setStatus('success');
+                // If sync failed (e.g. no membership found yet), wait and try again or show error
+                console.warn('Sync failed:', data.message);
+                // Fallback to old method: check local DB one last time
+                const { data: userData } = await supabase
+                    .from('users')
+                    .select('subscription_status')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (userData?.subscription_status === 'active' || userData?.subscription_status === 'trialing') {
+                    setStatus('success');
+                } else {
+                    setStatus('error');
+                }
             }
         } catch (error) {
             console.error('Error:', error);
@@ -57,8 +66,8 @@ export default function SuccessPage() {
             <div className="min-h-screen bg-black text-white flex items-center justify-center">
                 <div className="text-center">
                     <Loader2 className="w-12 h-12 text-orange-500 animate-spin mx-auto mb-4" />
-                    <h2 className="text-2xl font-bold mb-2">Processing your subscription...</h2>
-                    <p className="text-neutral-400">Please wait a moment</p>
+                    <h2 className="text-2xl font-bold mb-2">Finalizing your account...</h2>
+                    <p className="text-neutral-400">Syncing your subscription with Whop</p>
                 </div>
             </div>
         );
@@ -73,13 +82,13 @@ export default function SuccessPage() {
                     </div>
                     <h2 className="text-3xl font-bold mb-4">Something went wrong</h2>
                     <p className="text-neutral-400 mb-8">
-                        We couldn't verify your subscription. Please contact support if you've been charged.
+                        We couldn't verify your subscription automatically. Please contact support if you've been charged.
                     </p>
                     <Link
-                        href="/login"
+                        href="/desk"
                         className="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition-all"
                     >
-                        Go to Dashboard
+                        Try Dashboard Anyway
                     </Link>
                 </div>
             </div>
