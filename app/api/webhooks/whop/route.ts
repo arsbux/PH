@@ -10,44 +10,56 @@ import crypto from 'crypto';
 export async function POST(request: NextRequest) {
     try {
         const body = await request.text();
-        const signature = request.headers.get('x-whop-signature');
+
+        // Debug: Log all headers to find the signature
+        const headerList: Record<string, string> = {};
+        request.headers.forEach((value, key) => {
+            // Don't log sensitive auth headers if any
+            if (key.toLowerCase().includes('secret') || key.toLowerCase().includes('auth')) {
+                headerList[key] = '[REDACTED]';
+            } else {
+                headerList[key] = value;
+            }
+        });
+        console.log('📥 Webhook Headers:', JSON.stringify(headerList, null, 2));
+
+        // Try to get signature from various possible header names
+        const signature =
+            request.headers.get('x-whop-signature') ||
+            request.headers.get('X-Whop-Signature') ||
+            request.headers.get('webhook-signature');
+
         const webhookSecret = process.env.WHOP_WEBHOOK_SECRET;
 
-        console.log('📥 Webhook received');
-
-        // 1. Debugging Logs (Check Vercel logs to see these)
         if (!webhookSecret) {
             console.error('❌ CRITICAL: WHOP_WEBHOOK_SECRET is missing in env variables');
             return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
         }
 
         if (!signature) {
-            console.error('❌ Missing x-whop-signature header from Whop');
+            console.error('❌ Missing x-whop-signature header. Available headers logged above.');
             return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
         }
 
-        // 2. Verify Signature (HMAC SHA256)
-        // Create a hash using the body and your secret
+        // Verify Signature (HMAC SHA256)
         const calculatedSignature = crypto
             .createHmac('sha256', webhookSecret)
             .update(body)
             .digest('hex');
 
-        // Compare the calculated signature with the one from Whop
-        // We use timingSafeEqual to prevent timing attacks
         const isValid = crypto.timingSafeEqual(
             Buffer.from(calculatedSignature),
             Buffer.from(signature)
         );
 
         if (!isValid) {
-            console.error('❌ Invalid webhook signature. Potential spoofing attempt.');
+            console.error('❌ Invalid webhook signature.');
             console.log('Expected:', calculatedSignature);
             console.log('Received:', signature);
             return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
         }
 
-        // 3. Process Event
+        // Process Event
         const event = JSON.parse(body);
         console.log('✅ Signature verified. Processing event:', event.type);
 
