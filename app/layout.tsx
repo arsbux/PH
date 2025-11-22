@@ -10,11 +10,11 @@ export const metadata: Metadata = {
     icon: '/Favicon.png',
   },
   openGraph: {
-    images: ['/socialshare.png'],
+    images: ['/socialshare1.png'],
   },
   twitter: {
     card: 'summary_large_image',
-    images: ['/socialshare.png'],
+    images: ['/socialshare1.png'],
   },
 }
 
