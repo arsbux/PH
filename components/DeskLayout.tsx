@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogOut, Zap, Sparkles, Target, Users, TrendingUp, Menu, X, Award, Lightbulb, CreditCard, Settings } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase-browser';
 import Image from 'next/image';
 
 interface DeskLayoutProps {

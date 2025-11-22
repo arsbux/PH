@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import Image from 'next/image';
 import LandingTrendCard from '@/components/LandingTrendCard';
