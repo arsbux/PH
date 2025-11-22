@@ -4,7 +4,20 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Check, ArrowRight, Sparkles, TrendingUp, Target, ShieldCheck, BarChart3, Zap } from 'lucide-react';
 
+import { useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+
 export default function PricingPage() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (searchParams.get('checkout') === 'true') {
+            // Redirect to checkout API
+            window.location.href = '/api/whop/checkout';
+        }
+    }, [searchParams]);
+
     const features = [
         { icon: TrendingUp, text: 'Real-time trend velocity tracking' },
         { icon: Target, text: 'Blue Ocean market gap analysis' },

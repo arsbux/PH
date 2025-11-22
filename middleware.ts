@@ -65,6 +65,7 @@ export async function middleware(request: NextRequest) {
                 if (!hasActiveSubscription) {
                     const pricingUrl = new URL('/pricing', request.url);
                     pricingUrl.searchParams.set('message', 'subscription-required');
+                    pricingUrl.searchParams.set('checkout', 'true');
                     return NextResponse.redirect(pricingUrl);
                 }
             }
