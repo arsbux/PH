@@ -5,20 +5,13 @@ import type { NextRequest } from 'next/server';
 export async function middleware(request: NextRequest) {
     const path = request.nextUrl.pathname;
 
-    // ONLY protect /desk and /admin - everything else is PUBLIC
-    const protectedPaths = ['/desk', '/admin'];
-    const needsAuth = protectedPaths.some(route => path.startsWith(route));
-
-    // If the path doesn't need auth, let it through immediately
-    if (!needsAuth) {
+    // ONLY check auth for /desk and /admin
+    if (!path.startsWith('/desk') && !path.startsWith('/admin')) {
         return NextResponse.next();
     }
 
-    // Only check auth for protected paths
     let response = NextResponse.next({
-        request: {
-            headers: request.headers,
-        },
+        request: { headers: request.headers },
     });
 
     const supabase = createServerClient(
@@ -45,11 +38,8 @@ export async function middleware(request: NextRequest) {
 
     const { data: { session } } = await supabase.auth.getSession();
 
-    // No session? Redirect to login
     if (!session) {
-        const redirectUrl = new URL('/login', request.url);
-        redirectUrl.searchParams.set('next', path);
-        return NextResponse.redirect(redirectUrl);
+        return NextResponse.redirect(new URL('/login?next=' + path, request.url));
     }
 
     // Admin check
@@ -69,9 +59,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    // Only run middleware on app routes, exclude all static files and API routes
-    matcher: [
-        '/desk/:path*',
-        '/admin/:path*',
-    ],
+    matcher: ['/desk/:path*', '/admin/:path*'],
 };

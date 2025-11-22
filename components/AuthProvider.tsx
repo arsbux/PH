@@ -11,11 +11,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    
+
+    // Define which routes require authentication
+    const protectedRoutes = ['/desk', '/admin'];
+    const isProtected = protectedRoutes.some(route => pathname?.startsWith(route));
+
     // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (mounted && !session && pathname !== '/login' && pathname !== '/') {
-        router.push('/login');
+      // ONLY redirect if on a protected route without a session
+      if (mounted && !session && isProtected) {
+        router.push('/login?next=' + pathname);
       }
       if (mounted) {
         setLoading(false);
@@ -24,24 +29,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Only redirect on sign out, not on sign in
-      // This prevents auto-redirect when tab regains focus
-      if (mounted && event === 'SIGNED_OUT') {
+      // Only redirect on sign out
+      if (mounted && event === 'SIGNED_OUT' && isProtected) {
         router.push('/login');
       }
-      // Removed SIGNED_IN redirect to prevent unwanted navigation
     });
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []); // Remove pathname and router from dependencies to prevent re-runs
+  }, [pathname, router]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="text-neutral-400">Loading...</div>
       </div>
     );
   }
