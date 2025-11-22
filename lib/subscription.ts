@@ -17,28 +17,74 @@ export async function updateUserSubscription(data: {
     expiresAt?: string;
 }) {
     try {
-        // First, try to find user by whop_user_id
+        console.log(`🔍 Finding user for Whop ID: ${data.whopUserId}, Email: ${data.email}`);
+
+        // 1. Try to find user by whop_user_id
         let { data: user } = await supabaseAdmin
             .from('users')
             .select('*')
             .eq('whop_user_id', data.whopUserId)
             .single();
 
-        // If not found and we have email, try to find by email
+        // 2. If not found and we have email, try to find by email (case-insensitive)
         if (!user && data.email) {
             const { data: userByEmail } = await supabaseAdmin
                 .from('users')
                 .select('*')
-                .eq('email', data.email)
+                .ilike('email', data.email) // Use ilike for case-insensitive match
                 .single();
 
             user = userByEmail;
         }
 
+        // 3. HEALING: If still not found, check Auth system and create public record if needed
+        if (!user && data.email) {
+            console.log('⚠️ User not found in public.users. Checking Auth system...');
+
+            // List users to find by email (admin only)
+            const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+
+            if (authError) {
+                console.error('❌ Error listing auth users:', authError);
+            } else {
+                // Find the user in the list (case-insensitive)
+                const authUser = authUsers.users.find(u =>
+                    u.email?.toLowerCase() === data.email?.toLowerCase()
+                );
+
+                if (authUser) {
+                    console.log(`✅ Found user in Auth system: ${authUser.id}. Creating public record...`);
+
+                    // Insert into public.users
+                    const { data: newUser, error: createError } = await supabaseAdmin
+                        .from('users')
+                        .insert({
+                            id: authUser.id,
+                            email: authUser.email,
+                            whop_user_id: data.whopUserId, // Link immediately
+                            subscription_status: 'inactive' // Will be updated below
+                        })
+                        .select()
+                        .single();
+
+                    if (createError) {
+                        console.error('❌ Error creating public user record:', createError);
+                    } else {
+                        user = newUser;
+                        console.log('✅ Public user record created successfully.');
+                    }
+                } else {
+                    console.log('❌ User not found in Auth system either.');
+                }
+            }
+        }
+
         if (!user) {
-            console.log('User not found in database, will be created on first login');
+            console.error('❌ CRITICAL: User not found in database or auth system. Cannot update subscription.');
             return null;
         }
+
+        console.log(`✅ Updating subscription for user: ${user.id} (${user.email})`);
 
         // Update user record
         const { error: userError } = await supabaseAdmin
