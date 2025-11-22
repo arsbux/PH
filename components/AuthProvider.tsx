@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase-browser';
+import { Session } from '@supabase/supabase-js';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
@@ -17,7 +18,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const isProtected = protectedRoutes.some(route => pathname?.startsWith(route));
 
     // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       // ONLY redirect if on a protected route without a session
       if (mounted && !session && isProtected) {
         router.push('/login?next=' + pathname);
@@ -28,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session: Session | null) => {
       // Only redirect on sign out
       if (mounted && event === 'SIGNED_OUT' && isProtected) {
         router.push('/login');
