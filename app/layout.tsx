@@ -10,11 +10,11 @@ export const metadata: Metadata = {
     icon: '/Favicon.png',
   },
   openGraph: {
-    images: ['/socialshare1.png'],
+    images: ['https://rafddhfuidgiamkxdqyg.supabase.co/storage/v1/object/public/avatars/5e59793f-d2b0-47bc-8321-bc69fdf5aa2f/socialshare1.png'],
   },
   twitter: {
     card: 'summary_large_image',
-    images: ['/socialshare1.png'],
+    images: ['https://rafddhfuidgiamkxdqyg.supabase.co/storage/v1/object/public/avatars/5e59793f-d2b0-47bc-8321-bc69fdf5aa2f/socialshare1.png'],
   },
 }
 
