@@ -45,17 +45,24 @@ export default function Login() {
       password,
     });
     if (error) throw error;
-    window.location.href = '/desk';
+
+    // Check for next param
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get('next');
+    window.location.href = next || '/desk';
   }
 
   async function handleGoogleLogin() {
     setLoading(true);
     setMessage('');
 
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get('next');
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/desk`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next || '/desk')}`,
       },
     });
 
