@@ -17,10 +17,12 @@ export async function middleware(request: NextRequest) {
         '/login',
         '/pricing',
         '/success',
+        '/success-producthuntr',
         '/api/whop/checkout',
         '/api/auth/signup-from-checkout',
         '/api/auth/sync-status',
         '/api/webhooks/whop',
+        '/auth/callback',
     ];
 
     // Check if path is public
