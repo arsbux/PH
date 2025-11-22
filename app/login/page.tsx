@@ -161,15 +161,6 @@ export default function AuthPage() {
             </form>
           </div>
 
-          {/* Footer */}
-          <div className="text-center mt-6">
-            <p className="text-neutral-400 text-sm">
-              Don't have an account?{' '}
-              <Link href="/pricing" className="text-orange-500 hover:text-orange-400 font-medium transition-colors">
-                Get started
-              </Link>
-            </p>
-          </div>
 
         </div>
       </div>

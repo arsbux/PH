@@ -173,9 +173,6 @@ export default function Home() {
             <Link href="/api/whop/checkout" className="w-full sm:w-auto px-8 py-4 bg-orange-600 text-white rounded-full font-bold text-lg hover:bg-orange-700 transition-all hover:scale-105 shadow-xl shadow-orange-600/20 flex items-center justify-center gap-2">
               Get Started <ArrowRight className="w-5 h-5" />
             </Link>
-            <Link href="#demo" className="w-full sm:w-auto px-8 py-4 bg-neutral-900 border border-neutral-800 text-white rounded-full font-bold text-lg hover:bg-neutral-800 transition-all flex items-center justify-center gap-2">
-              <PlayCircle className="w-5 h-5" /> Watch Demo
-            </Link>
           </div>
 
           {/* Hero Visual - Floating Cards */}
