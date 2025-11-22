@@ -29,11 +29,16 @@ export async function GET() {
             const lastMonth = topic.timeSeriesData[topic.timeSeriesData.length - 1]?.launchCount || 0;
 
             let growth = 0;
-            if (firstMonth > 0) {
-                growth = Math.round(((lastMonth - firstMonth) / firstMonth) * 100);
-            } else if (lastMonth > 0) {
-                growth = 100;
+            // Use a minimum baseline of 5 to avoid massive percentage jumps from small numbers
+            const baseline = Math.max(firstMonth, 5);
+
+            if (lastMonth > 0) {
+                growth = Math.round(((lastMonth - baseline) / baseline) * 100);
             }
+
+            // Cap growth at 950% to avoid looking like fake data
+            if (growth > 950) growth = 950;
+            if (growth < 0) growth = 0; // Don't show negative growth on landing page trends
 
             let status = 'Regular';
             if (growth > 50) status = 'Exploding';

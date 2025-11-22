@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, Lock, TrendingUp } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
+import Link from 'next/link';
 
 interface LandingTrendCardProps {
     title: string;
@@ -35,9 +36,10 @@ export default function LandingTrendCard({
     }, [delay]);
 
     return (
-        <div
+        <Link
+            href="/api/whop/checkout"
             className={`
-        relative group rounded-3xl p-6 border transition-all duration-500
+        block relative group rounded-3xl p-6 border transition-all duration-500
         ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}
         ${isLocked
                     ? 'bg-neutral-900/50 border-neutral-800 blur-[2px] hover:blur-0 hover:bg-neutral-900 hover:border-orange-500/30'
@@ -115,6 +117,6 @@ export default function LandingTrendCard({
                     </button>
                 </div>
             )}
-        </div>
+        </Link>
     );
 }
