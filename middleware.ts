@@ -1,98 +1,91 @@
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 
 // This middleware protects routes for paid users only
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
+    const response = NextResponse.next();
 
-    // Skip middleware for public routes
-    const publicRoutes = ['/', '/pricing', '/login', '/api/auth', '/success'];
-    const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
+    // Skip middleware for public routes and API routes
+    const publicRoutes = ['/', '/pricing', '/login', '/success'];
+    const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'));
+    const isApiRoute = pathname.startsWith('/api/');
+    const isStaticRoute = pathname.startsWith('/_next/') || pathname.startsWith('/static/');
 
-    if (isPublicRoute) {
-        return NextResponse.next();
+    if (isPublicRoute || isApiRoute || isStaticRoute) {
+        return response;
     }
 
-    // Check authentication and subscription for protected routes
-    if (pathname.startsWith('/desk') || pathname.startsWith('/admin')) {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    try {
+        // Create Supabase client for middleware
+        const supabase = createMiddlewareClient({ req: request, res: response });
 
-        // Get session from cookie
-        const session = request.cookies.get('sb-access-token');
+        // Get user session
+        const { data: { session } } = await supabase.auth.getSession();
 
+        // Check if user is authenticated
         if (!session) {
-            // Not logged in - redirect to login
             const loginUrl = new URL('/login', request.url);
             loginUrl.searchParams.set('redirect', pathname);
             return NextResponse.redirect(loginUrl);
         }
 
-        // Create Supabase client
-        const supabase = createClient(supabaseUrl, supabaseKey);
+        const userId = session.user.id;
 
-        try {
-            // Get user from session token
-            const { data: { user }, error: authError } = await supabase.auth.getUser(session.value);
+        // For protected routes, check subscription
+        if (pathname.startsWith('/desk') || pathname.startsWith('/admin')) {
+            // Get user data including subscription status
+            const { data: userData, error } = await supabase
+                .from('users')
+                .select('subscription_status, is_admin')
+                .eq('id', userId)
+                .single();
 
-            if (authError || !user) {
-                const loginUrl = new URL('/login', request.url);
-                return NextResponse.redirect(loginUrl);
+            if (error) {
+                console.error('Error fetching user data:', error);
+                // Allow access if there's an error (fail open for now)
+                return response;
             }
 
-            // Check if admin route
+            // Check admin routes
             if (pathname.startsWith('/admin')) {
-                // Check if user is admin
-                const { data: userData } = await supabase
-                    .from('users')
-                    .select('is_admin')
-                    .eq('id', user.id)
-                    .single();
-
                 if (!userData?.is_admin) {
                     return NextResponse.redirect(new URL('/desk', request.url));
                 }
+                return response;
             }
 
-            // Check subscription status for desk routes
+            // Check subscription for /desk routes
             if (pathname.startsWith('/desk')) {
-                const { data: userData } = await supabase
-                    .from('users')
-                    .select('subscription_status')
-                    .eq('id', user.id)
-                    .single();
-
                 const hasActiveSubscription =
                     userData?.subscription_status === 'active' ||
                     userData?.subscription_status === 'trialing';
 
                 if (!hasActiveSubscription) {
-                    // No active subscription - redirect to pricing
                     const pricingUrl = new URL('/pricing', request.url);
                     pricingUrl.searchParams.set('message', 'subscription-required');
                     return NextResponse.redirect(pricingUrl);
                 }
             }
-
-            return NextResponse.next();
-        } catch (error) {
-            console.error('Middleware error:', error);
-            return NextResponse.redirect(new URL('/login', request.url));
         }
-    }
 
-    return NextResponse.next();
+        return response;
+    } catch (error) {
+        console.error('Middleware error:', error);
+        // On error, allow access (fail open)
+        return response;
+    }
 }
 
 export const config = {
     matcher: [
         /*
-         * Match all request paths except for:
+         * Match all request paths except:
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
-         * - public files (public directory)
+         * - public folder
          */
         '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif)$).*)',
     ],

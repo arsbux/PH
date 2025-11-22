@@ -137,17 +137,15 @@ export function getWhopCheckoutUrl(redirectUrl?: string): string {
         throw new Error('WHOP_PRODUCT_ID not configured');
     }
 
-    // Build checkout URL with product and redirect
-    const params = new URLSearchParams({
-        pass: productId,
-    });
+    // Whop checkout format: direct plan checkout URL
+    let checkoutUrl = `https://whop.com/checkout/${productId}`;
 
-    // Add redirect URL if provided
+    // Add redirect parameter if provided
     if (redirectUrl) {
-        params.append('redirect_url', redirectUrl);
+        checkoutUrl += `?redirect_url=${encodeURIComponent(redirectUrl)}`;
     }
 
-    return `https://whop.com/checkout/?${params.toString()}`;
+    return checkoutUrl;
 }
 
 /**
