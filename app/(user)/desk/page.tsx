@@ -113,7 +113,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="p-8">
-            <div className="h-[450px] w-full">
+            <div className="h-[300px] md:h-[450px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={topCategories} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
@@ -186,54 +186,56 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="p-6">
-            <ResponsiveContainer width="100%" height={500}>
-              <ScatterChart margin={{ top: 20, right: 20, bottom: 80, left: 80 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis
-                  type="number"
-                  dataKey="launchVolume"
-                  name="Launch Volume"
-                  stroke="#9ca3af"
-                  label={{ value: 'Launch Volume (Competition) →', position: 'bottom', offset: 60, style: { fill: '#6b7280', fontWeight: 'bold' } }}
-                />
-                <YAxis
-                  type="number"
-                  dataKey="avgUpvotes"
-                  name="Avg Upvotes"
-                  stroke="#9ca3af"
-                  label={{ value: '← Avg Upvotes (Demand)', angle: -90, position: 'left', offset: 60, style: { fill: '#6b7280', fontWeight: 'bold' } }}
-                />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload[0]) {
-                      const data = payload[0].payload as MarketGapMatrix;
-                      return (
-                        <div className="bg-white p-4 border-2 border-gray-200 rounded-lg shadow-xl">
-                          <div className="font-bold text-gray-900 mb-2">{data.category}</div>
-                          <div className="text-sm space-y-1">
-                            <div>Launch Volume: <span className="font-semibold">{data.launchVolume}</span></div>
-                            <div>Avg Upvotes: <span className="font-semibold">{data.avgUpvotes}</span></div>
-                            <div>Quadrant: <span className="font-semibold capitalize">{data.quadrant.replace('-', ' ')}</span></div>
-                            <div className="pt-2 border-t border-gray-200">
-                              <span className="text-xs font-semibold text-green-600">Opportunity Score: {data.opportunityScore}</span>
+            <div className="h-[400px] md:h-[500px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <ScatterChart margin={{ top: 20, right: 20, bottom: 80, left: 80 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis
+                    type="number"
+                    dataKey="launchVolume"
+                    name="Launch Volume"
+                    stroke="#9ca3af"
+                    label={{ value: 'Launch Volume (Competition) →', position: 'bottom', offset: 60, style: { fill: '#6b7280', fontWeight: 'bold' } }}
+                  />
+                  <YAxis
+                    type="number"
+                    dataKey="avgUpvotes"
+                    name="Avg Upvotes"
+                    stroke="#9ca3af"
+                    label={{ value: '← Avg Upvotes (Demand)', angle: -90, position: 'left', offset: 60, style: { fill: '#6b7280', fontWeight: 'bold' } }}
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload[0]) {
+                        const data = payload[0].payload as MarketGapMatrix;
+                        return (
+                          <div className="bg-white p-4 border-2 border-gray-200 rounded-lg shadow-xl">
+                            <div className="font-bold text-gray-900 mb-2">{data.category}</div>
+                            <div className="text-sm space-y-1">
+                              <div>Launch Volume: <span className="font-semibold">{data.launchVolume}</span></div>
+                              <div>Avg Upvotes: <span className="font-semibold">{data.avgUpvotes}</span></div>
+                              <div>Quadrant: <span className="font-semibold capitalize">{data.quadrant.replace('-', ' ')}</span></div>
+                              <div className="pt-2 border-t border-gray-200">
+                                <span className="text-xs font-semibold text-green-600">Opportunity Score: {data.opportunityScore}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Scatter data={marketGaps.slice(0, 30)}>
-                  {marketGaps.slice(0, 30).map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={getQuadrantColor(entry.quadrant)} />
-                  ))}
-                </Scatter>
-                {/* Reference lines for quadrants */}
-                <ReferenceLine x={marketGaps.length > 0 ? marketGaps.reduce((sum, m) => sum + m.launchVolume, 0) / marketGaps.length : 0} stroke="#9ca3af" strokeDasharray="5 5" />
-                <ReferenceLine y={marketGaps.length > 0 ? marketGaps.reduce((sum, m) => sum + m.avgUpvotes, 0) / marketGaps.length : 0} stroke="#9ca3af" strokeDasharray="5 5" />
-              </ScatterChart>
-            </ResponsiveContainer>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Scatter data={marketGaps.slice(0, 30)}>
+                    {marketGaps.slice(0, 30).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={getQuadrantColor(entry.quadrant)} />
+                    ))}
+                  </Scatter>
+                  {/* Reference lines for quadrants */}
+                  <ReferenceLine x={marketGaps.length > 0 ? marketGaps.reduce((sum, m) => sum + m.launchVolume, 0) / marketGaps.length : 0} stroke="#9ca3af" strokeDasharray="5 5" />
+                  <ReferenceLine y={marketGaps.length > 0 ? marketGaps.reduce((sum, m) => sum + m.avgUpvotes, 0) / marketGaps.length : 0} stroke="#9ca3af" strokeDasharray="5 5" />
+                </ScatterChart>
+              </ResponsiveContainer>
+            </div>
 
             {/* Quadrant Breakdown Lists */}
             <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">

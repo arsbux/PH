@@ -9,6 +9,13 @@ export const metadata: Metadata = {
   icons: {
     icon: '/Favicon.png',
   },
+  openGraph: {
+    images: ['/socialshare.png'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: ['/socialshare.png'],
+  },
 }
 
 export default function RootLayout({

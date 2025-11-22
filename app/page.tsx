@@ -145,7 +145,7 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-40 pb-20 px-6 relative overflow-hidden">
+      <section className="pt-28 md:pt-40 pb-20 px-6 relative overflow-hidden">
         {/* Background Gradients */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-orange-600/20 rounded-full blur-[120px] -z-10 opacity-50"></div>
 
@@ -158,7 +158,7 @@ export default function Home() {
             Analyzing 15,000+ launches in real-time
           </div>
 
-          <h1 className="text-5xl sm:text-7xl font-bold tracking-tight text-white mb-8 max-w-4xl mx-auto leading-[1.1]">
+          <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight text-white mb-8 max-w-4xl mx-auto leading-[1.1]">
             Decode the DNA of a <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-500">
               #1 Product Hunt Launch.
