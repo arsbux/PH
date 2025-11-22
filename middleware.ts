@@ -9,6 +9,28 @@ export async function middleware(request: NextRequest) {
         },
     });
 
+    const path = request.nextUrl.pathname;
+
+    // Public routes that DON'T need authentication
+    const publicPaths = [
+        '/',
+        '/login',
+        '/pricing',
+        '/success',
+        '/api/whop/checkout',
+        '/api/auth/signup-from-checkout',
+        '/api/auth/sync-status',
+        '/api/webhooks/whop',
+    ];
+
+    // Check if path is public
+    const isPublic = publicPaths.some(route => path === route || path.startsWith(route + '/'));
+
+    if (isPublic) {
+        return response;
+    }
+
+    // For protected routes, check authentication
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -57,22 +79,14 @@ export async function middleware(request: NextRequest) {
 
     const { data: { session } } = await supabase.auth.getSession();
 
-    const path = request.nextUrl.pathname;
-
-    // Public routes (no auth required)
-    const publicRoutes = ['/', '/login', '/pricing', '/success', '/api/webhooks/whop', '/api/whop/checkout'];
-    if (publicRoutes.some(route => path.startsWith(route))) {
-        return response;
-    }
-
-    // Protected routes (require login only)
+    // If no session, redirect to login
     if (!session) {
         const redirectUrl = new URL('/login', request.url);
         redirectUrl.searchParams.set('next', path);
         return NextResponse.redirect(redirectUrl);
     }
 
-    // Admin routes
+    // Admin routes check
     if (path.startsWith('/admin')) {
         const { data: user } = await supabase
             .from('users')

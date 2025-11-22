@@ -117,7 +117,7 @@ export default function Home() {
             <Link href="/pricing" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Pricing</Link>
             <div className="h-4 w-px bg-neutral-800"></div>
             <Link href="/login" className="text-sm font-medium text-white hover:text-orange-500 transition-colors">Log in</Link>
-            <Link href="/login" className="text-sm font-semibold bg-white text-black px-5 py-2.5 rounded-full hover:bg-neutral-200 transition-all">
+            <Link href="/api/whop/checkout" className="text-sm font-semibold bg-white text-black px-5 py-2.5 rounded-full hover:bg-neutral-200 transition-all">
               Get Started
             </Link>
           </div>
@@ -137,7 +137,7 @@ export default function Home() {
             <Link href="#features" className="text-base font-medium text-neutral-400" onClick={() => setMobileMenuOpen(false)}>Features</Link>
             <Link href="#trends" className="text-base font-medium text-neutral-400" onClick={() => setMobileMenuOpen(false)}>Trends</Link>
             <Link href="/login" className="text-base font-medium text-white" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
-            <Link href="/login" className="text-center font-semibold bg-orange-600 text-white px-5 py-3 rounded-xl" onClick={() => setMobileMenuOpen(false)}>
+            <Link href="/api/whop/checkout" className="text-center font-semibold bg-orange-600 text-white px-5 py-3 rounded-xl" onClick={() => setMobileMenuOpen(false)}>
               Get Started
             </Link>
           </div>
@@ -170,7 +170,7 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
-            <Link href="/login" className="w-full sm:w-auto px-8 py-4 bg-orange-600 text-white rounded-full font-bold text-lg hover:bg-orange-700 transition-all hover:scale-105 shadow-xl shadow-orange-600/20 flex items-center justify-center gap-2">
+            <Link href="/api/whop/checkout" className="w-full sm:w-auto px-8 py-4 bg-orange-600 text-white rounded-full font-bold text-lg hover:bg-orange-700 transition-all hover:scale-105 shadow-xl shadow-orange-600/20 flex items-center justify-center gap-2">
               Get Started <ArrowRight className="w-5 h-5" />
             </Link>
             <Link href="#demo" className="w-full sm:w-auto px-8 py-4 bg-neutral-900 border border-neutral-800 text-white rounded-full font-bold text-lg hover:bg-neutral-800 transition-all flex items-center justify-center gap-2">
