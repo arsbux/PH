@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/components/AuthProvider'
 
@@ -6,29 +6,49 @@ const title = 'Product Huntr - #1 Growth Hacking & Analytics Tool for Product Hu
 const description = 'The ultimate growth hacking platform for Product Hunt. Analyze 50,000+ launches, spot viral trends, and master your launch strategy. Trusted by top growth hackers, agencies, and makers to dominate the leaderboard.'
 const image = 'https://rafddhfuidgiamkxdqyg.supabase.co/storage/v1/object/public/avatars/5e59793f-d2b0-47bc-8321-bc69fdf5aa2f/socialshare1.png'
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#000000',
+}
+
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://producthuntr.com'),
-  title,
+  title: {
+    default: title,
+    template: '%s | Product Huntr',
+  },
   description,
-  keywords: 'growth hacking, product hunt analytics, product hunt launch strategy, growth hacker marketing, best product hunt tools, product hunting, viral launch strategies, sean ellis growth hacking, product hunt trends',
+  keywords: ['growth hacking', 'product hunt analytics', 'product hunt launch strategy', 'growth hacker marketing', 'best product hunt tools', 'product hunting', 'viral launch strategies', 'sean ellis growth hacking', 'product hunt trends'],
+  authors: [{ name: 'Product Huntr' }],
+  creator: 'Product Huntr',
+  publisher: 'Product Huntr',
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
   icons: {
     icon: '/Favicon.png',
+    shortcut: '/Favicon.png',
+    apple: '/Favicon.png',
   },
   openGraph: {
     title,
     description,
     url: '/',
     siteName: 'Product Huntr',
+    locale: 'en_US',
+    type: 'website',
     images: [
       {
         url: image,
         width: 1200,
         height: 630,
         alt: 'Product Huntr Dashboard',
+        type: 'image/png',
       },
     ],
-    locale: 'en_US',
-    type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
@@ -36,6 +56,14 @@ export const metadata: Metadata = {
     description,
     images: [image],
     creator: '@producthuntr',
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'Product Huntr',
+    statusBarStyle: 'black-translucent',
+  },
+  other: {
+    'og:image:secure_url': image,
   },
 }
 
