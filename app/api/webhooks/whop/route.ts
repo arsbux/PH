@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateUserSubscription, logWebhookEvent } from '@/lib/subscription';
+import crypto from 'crypto';
 
 /**
  * POST /api/webhooks/whop
@@ -12,28 +13,53 @@ export async function POST(request: NextRequest) {
         const signature = request.headers.get('x-whop-signature');
         const webhookSecret = process.env.WHOP_WEBHOOK_SECRET;
 
-        // Verify webhook signature (important for security!)
-        if (!signature || !webhookSecret) {
-            console.error('❌ Missing webhook signature or secret');
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        console.log('📥 Webhook received');
+
+        // 1. Debugging Logs (Check Vercel logs to see these)
+        if (!webhookSecret) {
+            console.error('❌ CRITICAL: WHOP_WEBHOOK_SECRET is missing in env variables');
+            return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
         }
 
-        // TODO: Properly verify signature with crypto
-        // For now, just check that it exists
+        if (!signature) {
+            console.error('❌ Missing x-whop-signature header from Whop');
+            return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
+        }
 
+        // 2. Verify Signature (HMAC SHA256)
+        // Create a hash using the body and your secret
+        const calculatedSignature = crypto
+            .createHmac('sha256', webhookSecret)
+            .update(body)
+            .digest('hex');
+
+        // Compare the calculated signature with the one from Whop
+        // We use timingSafeEqual to prevent timing attacks
+        const isValid = crypto.timingSafeEqual(
+            Buffer.from(calculatedSignature),
+            Buffer.from(signature)
+        );
+
+        if (!isValid) {
+            console.error('❌ Invalid webhook signature. Potential spoofing attempt.');
+            console.log('Expected:', calculatedSignature);
+            console.log('Received:', signature);
+            return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+        }
+
+        // 3. Process Event
         const event = JSON.parse(body);
+        console.log('✅ Signature verified. Processing event:', event.type);
 
-        console.log('📥 Whop Webhook Received:', event.type);
-
-        // Log all webhook events
+        // Log to database
         await logWebhookEvent({
             eventType: event.type,
             whopUserId: event.data?.user?.id || event.data?.user_id,
-            whopMembershipId: event.data?.id,
+            whopMembershipId: event.data?.id || event.data?.membership_id,
             payload: event,
         });
 
-        // Handle different event types
+        // Handle events
         switch (event.type) {
             case 'membership_went_valid':
             case 'membership_activated':
@@ -51,7 +77,7 @@ export async function POST(request: NextRequest) {
                 break;
 
             default:
-                console.log('⚠️  Unhandled event type:', event.type);
+                console.log('ℹ️ Unhandled event type:', event.type);
         }
 
         return NextResponse.json({ received: true });
@@ -62,25 +88,26 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleMembershipActivated(data: any) {
-    console.log('✅ Membership Activated');
-    console.log('   User ID:', data.user?.id || data.user_id);
-    console.log('   Membership ID:', data.id);
-    console.log('   Email:', data.user?.email || data.email);
+    console.log('🔄 Processing Membership Activation');
+    const userId = data.user?.id || data.user_id;
+    const email = data.user?.email || data.email;
+
+    if (!userId) {
+        console.error('❌ No user ID found in webhook data');
+        return;
+    }
 
     await updateUserSubscription({
-        whopUserId: data.user?.id || data.user_id,
+        whopUserId: userId,
         whopMembershipId: data.id,
         status: 'active',
-        email: data.user?.email || data.email,
+        email: email,
         expiresAt: data.expires_at,
     });
 }
 
 async function handleMembershipDeactivated(data: any) {
-    console.log('❌ Membership Deactivated');
-    console.log('   User ID:', data.user?.id || data.user_id);
-    console.log('   Membership ID:', data.id);
-
+    console.log('🔄 Processing Membership Deactivation');
     await updateUserSubscription({
         whopUserId: data.user?.id || data.user_id,
         whopMembershipId: data.id,
@@ -89,11 +116,7 @@ async function handleMembershipDeactivated(data: any) {
 }
 
 async function handlePaymentSucceeded(data: any) {
-    console.log('💰 Payment Succeeded');
-    console.log('   Amount:', data.amount / 100, data.currency?.toUpperCase());
-    console.log('   User ID:', data.user?.id || data.user_id);
-
-    // Update last payment date
+    console.log('💰 Processing Payment Success');
     await updateUserSubscription({
         whopUserId: data.user?.id || data.user_id,
         whopMembershipId: data.membership_id || data.id,
