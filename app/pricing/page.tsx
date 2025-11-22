@@ -5,12 +5,12 @@ import Image from 'next/image';
 import { Check, ArrowRight, Sparkles, TrendingUp, Target, ShieldCheck, BarChart3, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabase-browser';
 
 export default function PricingPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const supabase = createClientComponentClient();
+    const supabase = createClient();
     const [isLoading, setIsLoading] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
 
