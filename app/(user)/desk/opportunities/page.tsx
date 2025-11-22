@@ -3,252 +3,317 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-    Target,
-    TrendingUp,
     ArrowRight,
     Filter,
     Sparkles,
     Users,
-    BarChart3
+    Award,
+    Zap
 } from 'lucide-react';
-import { getMarketGaps, type MarketGap } from '@/lib/charts-data';
+import {
+    getMarketGaps,
+    type MarketGap,
+    getSuccessPatterns,
+    type SuccessPattern
+} from '@/lib/charts-data';
 
 export default function OpportunitiesPage() {
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'gaps' | 'patterns'>('gaps');
+
+    // Market Gaps State
     const [marketGaps, setMarketGaps] = useState<MarketGap[]>([]);
-    const [filter, setFilter] = useState<'all' | 'hot' | 'strong'>('all');
+    const [gapFilter, setGapFilter] = useState<'all' | 'hot' | 'strong'>('all');
+
+    // Success Patterns State
+    const [successPatterns, setSuccessPatterns] = useState<SuccessPattern[]>([]);
+    const [patternFilter, setPatternFilter] = useState<'all' | 'high' | 'emerging'>('all');
 
     useEffect(() => {
-        loadOpportunities();
+        loadData();
     }, []);
 
-    const loadOpportunities = async () => {
+    const loadData = async () => {
         setLoading(true);
         try {
-            const gaps = await getMarketGaps();
+            const [gaps, patterns] = await Promise.all([
+                getMarketGaps(),
+                getSuccessPatterns()
+            ]);
             setMarketGaps(gaps);
+            setSuccessPatterns(patterns);
         } catch (error) {
             console.error('Error loading opportunities:', error);
         }
         setLoading(false);
     };
 
+    // Filter Logic
     const getFilteredGaps = () => {
-        if (filter === 'hot') return marketGaps.filter(g => g.opportunityScore >= 400);
-        if (filter === 'strong') return marketGaps.filter(g => g.opportunityScore >= 300 && g.opportunityScore < 400);
+        if (gapFilter === 'hot') return marketGaps.filter(g => g.opportunityScore >= 400);
+        if (gapFilter === 'strong') return marketGaps.filter(g => g.opportunityScore >= 300 && g.opportunityScore < 400);
         return marketGaps;
     };
 
+    const getFilteredPatterns = () => {
+        if (patternFilter === 'high') return successPatterns.filter(p => p.successScore > 300);
+        if (patternFilter === 'emerging') return successPatterns.filter(p => p.count >= 2 && p.count <= 10);
+        return successPatterns;
+    };
+
     const filteredGaps = getFilteredGaps();
+    const filteredPatterns = getFilteredPatterns();
 
     const getScoreBadge = (score: number) => {
-        if (score >= 400) return { label: 'High Potential', color: 'bg-blue-100', textColor: 'text-blue-900' };
-        if (score >= 300) return { label: 'Moderate Potential', color: 'bg-gray-100', textColor: 'text-gray-900' };
-        return { label: 'Standard', color: 'bg-gray-50', textColor: 'text-gray-700' };
+        if (score >= 400) return { label: 'High Potential', color: 'text-blue-600 bg-blue-50' };
+        if (score >= 300) return { label: 'Moderate', color: 'text-gray-600 bg-gray-50' };
+        return { label: 'Standard', color: 'text-gray-500 bg-gray-50' };
     };
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="min-h-screen flex items-center justify-center bg-white">
                 <div className="text-center">
-                    <div className="w-12 h-12 border-3 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-600 font-medium">Finding opportunities...</p>
+                    <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-500 text-sm">Loading...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="max-w-6xl mx-auto px-6 py-12">
-                {/* Header Section */}
-                <div className="mb-12">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-12 h-12 bg-gray-900 rounded-xl flex items-center justify-center">
-                            <Target className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-4xl font-bold text-gray-900">
-                                Market Opportunities
-                            </h1>
-                            <p className="text-gray-600 mt-1">
-                                Underserved market segments with growth potential
-                            </p>
-                        </div>
-                    </div>
+        <div className="min-h-screen bg-white">
+            <div className="max-w-5xl mx-auto px-6 py-12">
+                {/* Header Section - Minimal */}
+                <div className="mb-10">
+                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight mb-2">
+                        Opportunities
+                    </h1>
+                    <p className="text-gray-500 text-lg">
+                        Underserved markets & success patterns
+                    </p>
                 </div>
 
-                {/* Stats Bar */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-8 shadow-sm">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-                                <Target className="w-6 h-6 text-blue-600" />
-                            </div>
-                            <div>
-                                <div className="text-2xl font-bold text-gray-900">{marketGaps.length}</div>
-                                <div className="text-sm text-gray-500">Total Opportunities</div>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
-                                <TrendingUp className="w-6 h-6 text-green-600" />
-                            </div>
-                            <div>
-                                <div className="text-2xl font-bold text-gray-900">
-                                    {marketGaps.filter(g => g.opportunityScore >= 400).length}
-                                </div>
-                                <div className="text-sm text-gray-600">High Potential Markets</div>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
-                                <BarChart3 className="w-6 h-6 text-purple-600" />
-                            </div>
-                            <div>
-                                <div className="text-2xl font-bold text-gray-900">
-                                    {Math.round(marketGaps.reduce((sum, g) => sum + g.avgEngagement, 0) / marketGaps.length || 0)}
-                                </div>
-                                <div className="text-sm text-gray-500">Avg Engagement</div>
-                            </div>
-                        </div>
-                    </div>
+                {/* Tab Navigation - Minimal */}
+                <div className="flex gap-8 border-b border-gray-100 mb-10">
+                    <button
+                        onClick={() => setActiveTab('gaps')}
+                        className={`pb-3 text-sm font-medium transition-all relative ${activeTab === 'gaps'
+                            ? 'text-gray-900 border-b border-gray-900'
+                            : 'text-gray-400 hover:text-gray-600'
+                            }`}
+                    >
+                        Market Gaps
+                        <span className="ml-2 text-xs text-gray-400">
+                            {marketGaps.length}
+                        </span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('patterns')}
+                        className={`pb-3 text-sm font-medium transition-all relative ${activeTab === 'patterns'
+                            ? 'text-gray-900 border-b border-gray-900'
+                            : 'text-gray-400 hover:text-gray-600'
+                            }`}
+                    >
+                        Success Patterns
+                        <span className="ml-2 text-xs text-gray-400">
+                            {successPatterns.length}
+                        </span>
+                    </button>
                 </div>
 
-                {/* Filter Bar */}
-                <div className="flex items-center gap-3 mb-6">
-                    <Filter className="w-4 h-4 text-gray-400" />
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => setFilter('all')}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'all'
-                                ? 'bg-gray-900 text-white shadow-sm'
-                                : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
-                                }`}
-                        >
-                            All ({marketGaps.length})
-                        </button>
-                        <button
-                            onClick={() => setFilter('hot')}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'hot'
-                                ? 'bg-green-500 text-white shadow-sm'
-                                : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
-                                }`}
-                        >
-                            High Potential ({marketGaps.filter(g => g.opportunityScore >= 400).length})
-                        </button>
-                        <button
-                            onClick={() => setFilter('strong')}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'strong'
-                                ? 'bg-blue-500 text-white shadow-sm'
-                                : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
-                                }`}
-                        >
-                            Moderate ({marketGaps.filter(g => g.opportunityScore >= 300 && g.opportunityScore < 400).length})
-                        </button>
-                    </div>
-                </div>
-
-                {/* Opportunities Grid */}
-                <div className="space-y-4">
-                    {filteredGaps.map((gap, index) => {
-                        const badge = getScoreBadge(gap.opportunityScore);
-                        const actualIndex = marketGaps.indexOf(gap);
-
-                        return (
-                            <Link
-                                key={`${gap.icp}-${gap.problem}-${index}`}
-                                href={`/desk/niche/${encodeURIComponent(gap.niche)}`}
-                                className="block"
+                {/* MARKET GAPS CONTENT */}
+                {activeTab === 'gaps' && (
+                    <>
+                        {/* Filter Bar - Minimal */}
+                        <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">
+                            <button
+                                onClick={() => setGapFilter('all')}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${gapFilter === 'all'
+                                    ? 'bg-gray-900 text-white'
+                                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                    }`}
                             >
-                                <div className="bg-white border border-gray-100 rounded-2xl p-6 hover:border-gray-200 hover:shadow-lg transition-all group">
-                                    <div className="flex items-start gap-6">
-                                        {/* Rank Badge */}
-                                        <div className="flex-shrink-0">
-                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-semibold ${actualIndex < 3
-                                                    ? 'bg-gray-900 text-white'
-                                                    : 'bg-gray-100 text-gray-600'
-                                                }`}>
-                                                {actualIndex + 1}
+                                All
+                            </button>
+                            <button
+                                onClick={() => setGapFilter('hot')}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${gapFilter === 'hot'
+                                    ? 'bg-gray-900 text-white'
+                                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                    }`}
+                            >
+                                High Potential
+                            </button>
+                            <button
+                                onClick={() => setGapFilter('strong')}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${gapFilter === 'strong'
+                                    ? 'bg-gray-900 text-white'
+                                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                    }`}
+                            >
+                                Moderate
+                            </button>
+                        </div>
+
+                        {/* Opportunities List - Minimal */}
+                        <div className="space-y-3">
+                            {filteredGaps.map((gap, index) => {
+                                const badge = getScoreBadge(gap.opportunityScore);
+
+                                return (
+                                    <Link
+                                        key={`${gap.icp}-${gap.problem}-${index}`}
+                                        href={`/desk/niche/${encodeURIComponent(gap.niche)}`}
+                                        className="block group"
+                                    >
+                                        <div className="bg-white border border-gray-100 rounded-lg p-5 hover:border-gray-300 transition-all">
+                                            <div className="flex flex-col md:flex-row md:items-start gap-4">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
+                                                            {gap.niche}
+                                                        </span>
+                                                        <span className="text-gray-300">•</span>
+                                                        <span className={`text-xs font-medium px-2 py-0.5 rounded ${badge.color}`}>
+                                                            {badge.label}
+                                                        </span>
+                                                    </div>
+
+                                                    <h3 className="text-base font-medium text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                                                        {gap.problem}
+                                                    </h3>
+
+                                                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                                                        <div className="flex items-center gap-1">
+                                                            <Users className="w-3 h-3" />
+                                                            <span>{gap.icp}</span>
+                                                        </div>
+                                                        <span>•</span>
+                                                        <div>
+                                                            <span className="font-medium text-gray-900">{gap.currentProducts}</span> products
+                                                        </div>
+                                                        <span>•</span>
+                                                        <div>
+                                                            <span className="font-medium text-gray-900">{gap.avgEngagement}</span> avg engagement
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-gray-50 group-hover:bg-gray-100 transition-colors">
+                                                    <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-gray-900" />
+                                                </div>
                                             </div>
                                         </div>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
 
-                                        {/* Content */}
-                                        <div className="flex-1 min-w-0">
-                                            {/* Top Row */}
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <span className={`px-3 py-1 rounded-md text-xs font-medium ${badge.color} ${badge.textColor}`}>
-                                                    {badge.label}
-                                                </span>
-                                                <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-semibold border border-blue-100">
-                                                    {gap.niche}
-                                                </span>
-                                                <span className="text-xs text-gray-400 ml-auto">
-                                                    Score: {gap.opportunityScore}
-                                                </span>
-                                            </div>
+                {/* SUCCESS PATTERNS CONTENT */}
+                {activeTab === 'patterns' && (
+                    <>
+                        {/* Filters - Minimal */}
+                        <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">
+                            <button
+                                onClick={() => setPatternFilter('all')}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${patternFilter === 'all'
+                                    ? 'bg-gray-900 text-white'
+                                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                    }`}
+                            >
+                                All
+                            </button>
+                            <button
+                                onClick={() => setPatternFilter('high')}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${patternFilter === 'high'
+                                    ? 'bg-gray-900 text-white'
+                                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                    }`}
+                            >
+                                High Performers
+                            </button>
+                            <button
+                                onClick={() => setPatternFilter('emerging')}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${patternFilter === 'emerging'
+                                    ? 'bg-gray-900 text-white'
+                                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                    }`}
+                            >
+                                Emerging
+                            </button>
+                        </div>
 
-                                            {/* Problem - Main Focus */}
-                                            <h3 className="text-lg font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors leading-tight">
-                                                {gap.problem}
-                                            </h3>
+                        {/* Patterns List - Minimal */}
+                        <div className="space-y-3">
+                            {filteredPatterns.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <p className="text-gray-400 text-sm">No patterns found.</p>
+                                </div>
+                            ) : (
+                                filteredPatterns.map((pattern, index) => (
+                                    <div
+                                        key={index}
+                                        className="bg-white border border-gray-100 rounded-lg p-5 hover:border-gray-300 transition-all"
+                                    >
+                                        <div className="flex flex-col md:flex-row md:items-start gap-4">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
+                                                        {pattern.niche}
+                                                    </span>
+                                                    {pattern.successScore > 500 && (
+                                                        <span className="text-xs font-medium px-2 py-0.5 rounded bg-green-50 text-green-700 flex items-center gap-1">
+                                                            <Award className="w-3 h-3" /> High Performer
+                                                        </span>
+                                                    )}
+                                                    {pattern.count >= 2 && pattern.count <= 5 && (
+                                                        <span className="text-xs font-medium px-2 py-0.5 rounded bg-purple-50 text-purple-700 flex items-center gap-1">
+                                                            <Zap className="w-3 h-3" /> Emerging
+                                                        </span>
+                                                    )}
+                                                </div>
 
-                                            {/* Target Audience with Icon */}
-                                            <div className="flex items-center gap-2 mb-4 text-gray-600">
-                                                <Users className="w-4 h-4 text-gray-400" />
-                                                <span className="text-sm">
-                                                    <span className="text-gray-500">For</span>{' '}
-                                                    <span className="font-semibold text-gray-900">{gap.icp}</span>
-                                                </span>
-                                            </div>
-
-                                            {/* Metrics Bar */}
-                                            <div className="flex items-center gap-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                                                     <div>
-                                                        <div className="text-lg font-bold text-gray-900">{gap.currentProducts}</div>
-                                                        <div className="text-xs text-gray-500">Products</div>
+                                                        <div className="text-[10px] font-medium text-gray-400 uppercase mb-1">Problem</div>
+                                                        <div className="text-sm text-gray-900">{pattern.problem}</div>
                                                     </div>
-                                                </div>
-                                                <div className="w-px h-8 bg-gray-200"></div>
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                                                     <div>
-                                                        <div className="text-lg font-bold text-gray-900">{gap.avgEngagement}</div>
-                                                        <div className="text-xs text-gray-500">Avg Engagement</div>
+                                                        <div className="text-[10px] font-medium text-gray-400 uppercase mb-1">Target ICP</div>
+                                                        <div className="text-sm text-gray-900">{pattern.icp}</div>
                                                     </div>
                                                 </div>
-                                                <div className="w-px h-8 bg-gray-200"></div>
-                                                <div className="flex-1 flex items-center justify-end">
-                                                    <div className="text-xs text-gray-500 italic">
-                                                        {gap.reasoning}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
 
-                                        {/* Arrow */}
-                                        <div className="flex-shrink-0">
-                                            <div className="w-10 h-10 rounded-xl bg-gray-50 group-hover:bg-blue-50 flex items-center justify-center transition-colors">
-                                                <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                                                <div className="flex items-center gap-4 text-xs text-gray-500 border-t border-gray-50 pt-3 mt-1">
+                                                    <div>
+                                                        <span className="font-medium text-gray-900">{pattern.count}</span> launches
+                                                    </div>
+                                                    <span>•</span>
+                                                    <div>
+                                                        <span className="font-medium text-gray-900">{pattern.avgVotes}</span> avg votes
+                                                    </div>
+                                                    <span>•</span>
+                                                    <div>
+                                                        <span className="font-medium text-gray-900">{pattern.avgComments}</span> avg comments
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </Link>
-                        );
-                    })}
-                </div>
+                                ))
+                            )}
+                        </div>
+                    </>
+                )}
 
                 {/* Empty State */}
-                {filteredGaps.length === 0 && (
-                    <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
-                        <Sparkles className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No opportunities found</h3>
-                        <p className="text-gray-500 text-sm">
-                            Try adjusting your filters
-                        </p>
+                {activeTab === 'gaps' && filteredGaps.length === 0 && (
+                    <div className="text-center py-20">
+                        <Sparkles className="w-8 h-8 mx-auto mb-3 text-gray-300" />
+                        <p className="text-gray-500 text-sm">No opportunities found.</p>
                     </div>
                 )}
             </div>

@@ -2,51 +2,50 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Zap } from 'lucide-react';
+import { Zap, ArrowRight, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleAuth(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setMessage('');
 
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+        if (error) throw error;
+        setMessage('Account created! Signing you in...');
+        // Auto sign in after sign up if possible, or just let them know
+        setTimeout(() => {
+          // Attempt login immediately after signup for smoother UX if email confirmation isn't strictly enforced blocking
+          handleLoginDirect();
+        }, 1000);
+      } else {
+        await handleLoginDirect();
+      }
+    } catch (error: any) {
+      setMessage(error.message);
+      setLoading(false);
+    }
+  }
+
+  async function handleLoginDirect() {
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-
-    if (error) {
-      setMessage(error.message);
-      setLoading(false);
-    } else {
-      window.location.href = '/desk';
-    }
-  }
-
-  async function handleSignUp(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setMessage('');
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (error) {
-      setMessage(error.message);
-      setLoading(false);
-    } else {
-      setMessage('Account created! Signing you in...');
-      setTimeout(() => {
-        handleLogin(e);
-      }, 1000);
-    }
+    if (error) throw error;
+    window.location.href = '/desk';
   }
 
   async function handleGoogleLogin() {
@@ -67,37 +66,47 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50">
-      <div className="w-full max-w-md">
-        <div className="bg-white border border-neutral-200 rounded-2xl p-8 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
-              <Zap className="w-5 h-5 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">Product Hunta</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAFAFA]">
+      <div className="w-full max-w-[400px] px-6">
+        {/* Logo & Header */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-12 h-12 relative rounded-xl mb-6 shadow-xl shadow-black/10 overflow-hidden">
+            <Image src="/Favicon.png" alt="Logo" fill className="object-cover" />
           </div>
-          <p className="text-neutral-600 text-sm mb-8">Sign in to your analyst desk</p>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight mb-2">
+            Product Huntr
+          </h1>
+          <p className="text-gray-500 text-lg">
+            {isSignUp ? 'Create your analyst account' : 'Welcome back, analyst'}
+          </p>
+        </div>
 
-          <form className="space-y-4">
+        {/* Main Card */}
+        <div className="bg-white rounded-2xl shadow-[0_2px_40px_-12px_rgba(0,0,0,0.1)] border border-gray-100 p-8">
+          <form onSubmit={handleAuth} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">Email</label>
+              <label className="block text-xs font-semibold text-gray-900 uppercase tracking-wider mb-2">
+                Email Address
+              </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full border border-neutral-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all"
-                placeholder="you@company.com"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all"
+                placeholder="name@company.com"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">Password</label>
+              <label className="block text-xs font-semibold text-gray-900 uppercase tracking-wider mb-2">
+                Password
+              </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full border border-neutral-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all"
                 placeholder="••••••••"
                 required
                 minLength={6}
@@ -105,45 +114,43 @@ export default function Login() {
             </div>
 
             {message && (
-              <div className={`px-4 py-3 rounded-lg text-sm ${message.includes('created')
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : 'bg-red-50 text-red-700 border border-red-200'
+              <div className={`p-4 rounded-xl text-sm font-medium flex items-center gap-2 ${message.includes('created')
+                ? 'bg-green-50 text-green-700 border border-green-100'
+                : 'bg-red-50 text-red-700 border border-red-100'
                 }`}>
                 {message}
               </div>
             )}
 
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={handleLogin}
-                disabled={loading}
-                className="flex-1 bg-neutral-900 text-white py-2.5 rounded-lg font-medium hover:bg-neutral-800 disabled:opacity-50 transition-all"
-              >
-                {loading ? 'Loading...' : 'Sign In'}
-              </button>
-              <button
-                onClick={handleSignUp}
-                disabled={loading}
-                className="flex-1 bg-neutral-100 text-neutral-900 py-2.5 rounded-lg font-medium hover:bg-neutral-200 disabled:opacity-50 transition-all"
-              >
-                Sign Up
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-black text-white py-3.5 rounded-xl font-semibold hover:bg-gray-900 disabled:opacity-70 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 group"
+            >
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  {isSignUp ? 'Create Account' : 'Sign In'}
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </>
+              )}
+            </button>
           </form>
 
-          <div className="relative my-6">
+          <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-neutral-200"></div>
+              <div className="w-full border-t border-gray-100"></div>
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-neutral-500">Or continue with</span>
+            <div className="relative flex justify-center text-xs uppercase tracking-wider font-medium">
+              <span className="px-4 bg-white text-gray-400">Or continue with</span>
             </div>
           </div>
 
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 bg-white border border-neutral-300 text-neutral-700 py-2.5 rounded-lg font-medium hover:bg-neutral-50 disabled:opacity-50 transition-all"
+            className="w-full flex items-center justify-center gap-3 bg-white border border-gray-200 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 transition-all"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -163,7 +170,24 @@ export default function Login() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            Continue with Google
+            Google
+          </button>
+        </div>
+
+        {/* Toggle */}
+        <div className="text-center mt-8">
+          <button
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setMessage('');
+            }}
+            className="text-sm text-gray-500 hover:text-gray-900 transition-colors font-medium"
+          >
+            {isSignUp ? (
+              <>Already have an account? <span className="underline decoration-gray-300 underline-offset-4">Sign in</span></>
+            ) : (
+              <>Don't have an account? <span className="underline decoration-gray-300 underline-offset-4">Create one</span></>
+            )}
           </button>
         </div>
       </div>

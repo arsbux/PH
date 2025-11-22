@@ -5,6 +5,9 @@ import { AuthProvider } from '@/components/AuthProvider'
 export const metadata: Metadata = {
   title: 'FounderSignal - Market Intelligence Desk',
   description: 'Daily, curated, actionable signals',
+  icons: {
+    icon: '/Favicon.png',
+  },
 }
 
 export default function RootLayout({

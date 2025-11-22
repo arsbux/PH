@@ -84,6 +84,12 @@ const topicColors = [
 ];
 ```
 
+### Implementation Plan
+- [x] Rebuild Topic Velocity chart with real data and better design
+- [x] Replace Topic Velocity with Market Landscape Treemap
+- [ ] Polish Niche Analysis page
+- [ ] Polish Success Patterns page
+
 ### Examples
 
 **Topic Velocity Chart:**

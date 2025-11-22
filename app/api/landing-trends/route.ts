@@ -54,6 +54,7 @@ export async function GET() {
         return NextResponse.json({
             trends: trends.slice(0, 9),
             topNiches: volumeData.slice(0, 5),
+            marketGaps: marketGaps.slice(0, 10),
             stats: {
                 totalProducts: marketHealth?.totalProducts || 0,
                 successRate: marketHealth?.successRate || 0,

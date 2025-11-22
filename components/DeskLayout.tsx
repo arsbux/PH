@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LogOut, Zap, Sparkles, Target, Users, TrendingUp, Menu, X, Award, Lightbulb } from 'lucide-react';
+import { LogOut, Zap, Sparkles, Target, Users, TrendingUp, Menu, X, Award, Lightbulb, CreditCard, Settings } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import Image from 'next/image';
 
 interface DeskLayoutProps {
   children: React.ReactNode;
@@ -22,9 +23,9 @@ export default function DeskLayout({ children }: DeskLayoutProps) {
   const navItems = [
     { href: '/desk', label: 'Market Intelligence', icon: TrendingUp },
     { href: '/desk/niche', label: 'Niche Analysis', icon: Target },
-    { href: '/desk/success-patterns', label: 'Success Patterns', icon: Award },
     { href: '/desk/idea-validator', label: 'Idea Validator', icon: Lightbulb },
     { href: '/desk/opportunities', label: 'Opportunities', icon: Sparkles },
+    { href: '/desk/subscription', label: 'Subscription', icon: CreditCard },
   ];
 
   return (
@@ -32,10 +33,10 @@ export default function DeskLayout({ children }: DeskLayoutProps) {
       {/* Mobile Header */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-neutral-200 z-40 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center">
-            <Zap className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 relative rounded-lg overflow-hidden">
+            <Image src="/Favicon.png" alt="Logo" fill className="object-cover" />
           </div>
-          <span className="font-bold text-neutral-900">Product Hunta</span>
+          <span className="font-bold text-neutral-900">Product Huntr</span>
         </div>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -61,10 +62,10 @@ export default function DeskLayout({ children }: DeskLayoutProps) {
         <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-6 h-6 bg-gray-900 rounded-md flex items-center justify-center">
-                <Zap className="w-3 h-3 text-white" />
+              <div className="w-6 h-6 relative rounded-md overflow-hidden">
+                <Image src="/Favicon.png" alt="Logo" fill className="object-cover" />
               </div>
-              <h1 className="text-lg font-bold text-neutral-900 tracking-tight">Product Hunta</h1>
+              <h1 className="text-lg font-bold text-neutral-900 tracking-tight">Product Huntr</h1>
             </div>
             <p className="text-xs text-neutral-500 pl-8">Product Hunt Analyst</p>
           </div>

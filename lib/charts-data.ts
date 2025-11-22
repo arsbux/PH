@@ -20,6 +20,43 @@ export interface TopicVelocityData {
     trend: 'rising' | 'stable' | 'declining';
 }
 
+const CATEGORY_MAPPING: Record<string, string> = {
+    'Artificial Intelligence': 'AI & Machine Learning',
+    'Machine Learning': 'AI & Machine Learning',
+    'Generative AI': 'AI & Machine Learning',
+    'Developer Tools': 'Developer Tools',
+    'Programming': 'Developer Tools',
+    'APIs': 'Developer Tools',
+    'Open Source': 'Developer Tools',
+    'Productivity': 'Productivity & Organization',
+    'Task Management': 'Productivity & Organization',
+    'Calendar': 'Productivity & Organization',
+    'Notes': 'Productivity & Organization',
+    'Design Tools': 'Design & Creative',
+    'Graphics': 'Design & Creative',
+    'User Experience': 'Design & Creative',
+    'Marketing': 'Marketing & Growth',
+    'SEO': 'Marketing & Growth',
+    'Social Media': 'Marketing & Growth',
+    'Analytics': 'Marketing & Growth',
+    'Growth Hacking': 'Marketing & Growth',
+};
+
+function mapNicheToCategory(niche: string): string {
+    // Direct match
+    if (CATEGORY_MAPPING[niche]) return CATEGORY_MAPPING[niche];
+
+    // Keyword match
+    const lower = niche.toLowerCase();
+    if (lower.includes('ai') || lower.includes('gpt') || lower.includes('bot')) return 'AI & Machine Learning';
+    if (lower.includes('dev') || lower.includes('code') || lower.includes('api') || lower.includes('sdk')) return 'Developer Tools';
+    if (lower.includes('productiv') || lower.includes('task') || lower.includes('notion') || lower.includes('organi')) return 'Productivity & Organization';
+    if (lower.includes('design') || lower.includes('art') || lower.includes('color') || lower.includes('ui') || lower.includes('ux')) return 'Design & Creative';
+    if (lower.includes('market') || lower.includes('seo') || lower.includes('social') || lower.includes('ad')) return 'Marketing & Growth';
+
+    return 'Other';
+}
+
 export async function getTopicVelocity(months = 12): Promise<TopicVelocityData[]> {
     const { data: launches } = await supabase
         .from('ph_launches')
@@ -33,7 +70,11 @@ export async function getTopicVelocity(months = 12): Promise<TopicVelocityData[]
     const topicMap = new Map<string, Map<string, { launches: any[], votes: number, comments: number }>>();
 
     launches.forEach(launch => {
-        const niche = launch.ai_analysis?.niche || 'Unknown';
+        const rawNiche = launch.ai_analysis?.niche || 'Unknown';
+        const niche = mapNicheToCategory(rawNiche);
+
+        if (niche === 'Other') return; // Skip undefined categories for cleaner chart
+
         const monthKey = getMonthKey(launch.launched_at);
 
         if (!topicMap.has(niche)) {
@@ -85,6 +126,87 @@ export async function getTopicVelocity(months = 12): Promise<TopicVelocityData[]
     });
 
     return results.sort((a, b) => b.totalLaunches - a.totalLaunches).slice(0, 10);
+}
+
+// ============================================
+// 1.5 MARKET LANDSCAPE TREEMAP
+// ============================================
+
+export interface TreemapData {
+    name: string;
+    size: number; // Total Launches
+    growth: number; // Growth Rate %
+    sentiment: number; // Avg Upvotes (proxy for sentiment/demand)
+    children?: TreemapData[];
+    [key: string]: any; // Index signature for Recharts
+}
+
+export async function getMarketTreemap(): Promise<TreemapData[]> {
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('ai_analysis, votes_count, launched_at')
+        .not('ai_analysis', 'is', null)
+        .gte('launched_at', getMonthsAgo(12));
+
+    if (!launches) return [];
+
+    const categoryMap = new Map<string, {
+        launches: number;
+        recentLaunches: number;
+        oldLaunches: number;
+        totalVotes: number;
+    }>();
+
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    launches.forEach(launch => {
+        const rawNiche = launch.ai_analysis?.niche || 'Unknown';
+        const niche = mapNicheToCategory(rawNiche);
+
+        if (niche === 'Other') return;
+
+        if (!categoryMap.has(niche)) {
+            categoryMap.set(niche, { launches: 0, recentLaunches: 0, oldLaunches: 0, totalVotes: 0 });
+        }
+
+        const data = categoryMap.get(niche)!;
+        data.launches += 1;
+        data.totalVotes += launch.votes_count || 0;
+
+        if (new Date(launch.launched_at) > sixMonthsAgo) {
+            data.recentLaunches += 1;
+        } else {
+            data.oldLaunches += 1;
+        }
+    });
+
+    const results: TreemapData[] = [];
+
+    categoryMap.forEach((data, name) => {
+        // Calculate growth
+        const growth = data.oldLaunches > 0
+            ? Math.round(((data.recentLaunches - data.oldLaunches) / data.oldLaunches) * 100)
+            : 100;
+
+        const sentiment = Math.round(data.totalVotes / data.launches);
+
+        results.push({
+            name,
+            size: data.launches,
+            growth,
+            sentiment
+        });
+    });
+
+    // Wrap in a root node to ensure Recharts handles depth correctly (Root = 0, Categories = 1)
+    return [{
+        name: 'Market',
+        size: 0, // Recharts will calculate this based on children
+        growth: 0,
+        sentiment: 0,
+        children: results.sort((a, b) => b.size - a.size)
+    }];
 }
 
 // ============================================
@@ -966,5 +1088,89 @@ function getMonthKey(dateString: string): string {
 function percentile(sortedArray: number[], p: number): number {
     const index = Math.ceil((p / 100) * sortedArray.length) - 1;
     return sortedArray[Math.max(0, index)] || 0;
+}
+
+// ============================================
+// SUCCESS PATTERNS (ICP + Problem + Niche)
+// ============================================
+
+export interface SuccessPattern {
+    icp: string;
+    problem: string;
+    niche: string;
+    count: number;
+    avgVotes: number;
+    avgComments: number;
+    successScore: number;
+}
+
+export async function getSuccessPatterns(): Promise<SuccessPattern[]> {
+    const { data: launches, error } = await supabase
+        .from('ph_launches')
+        .select('ai_analysis, votes_count, comments_count')
+        .not('ai_analysis', 'is', null);
+
+    if (error || !launches) {
+        console.error('Error fetching patterns:', error);
+        return [];
+    }
+
+    // Group by ICP + Problem + Niche combination
+    const patternMap = new Map<string, {
+        count: number;
+        totalVotes: number;
+        totalComments: number;
+        icp: string;
+        problem: string;
+        niche: string;
+    }>();
+
+    launches.forEach(launch => {
+        const analysis = launch.ai_analysis;
+        if (!analysis) return;
+
+        const icp = analysis.icp || 'Unknown ICP';
+        const problem = analysis.problem || 'Unknown Problem';
+        const niche = analysis.niche || 'Unknown Niche';
+
+        const key = `${icp}|${problem}|${niche}`;
+
+        const existing = patternMap.get(key) || {
+            count: 0,
+            totalVotes: 0,
+            totalComments: 0,
+            icp,
+            problem,
+            niche,
+        };
+
+        existing.count++;
+        existing.totalVotes += launch.votes_count || 0;
+        existing.totalComments += launch.comments_count || 0;
+
+        patternMap.set(key, existing);
+    });
+
+    // Convert to array and calculate success score
+    return Array.from(patternMap.values())
+        .filter(p => {
+            // Show all patterns, but filter out "Unknown" combinations
+            return p.icp !== 'Unknown ICP' && p.problem !== 'Unknown Problem';
+        })
+        .map(p => ({
+            icp: p.icp,
+            problem: p.problem,
+            niche: p.niche,
+            count: p.count,
+            avgVotes: Math.round(p.totalVotes / p.count),
+            avgComments: Math.round(p.totalComments / p.count),
+            successScore: Math.round(
+                (p.totalVotes / p.count * 0.6) +
+                (p.totalComments / p.count * 0.3 * 5) +
+                (Math.min(p.count, 10) * 10)
+            ),
+        }))
+        .sort((a, b) => b.successScore - a.successScore)
+        .slice(0, 50);
 }
 

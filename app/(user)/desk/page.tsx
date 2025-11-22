@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  TrendingUp,
   Target,
-  Sparkles,
-  ArrowRight
+  BarChart3,
+  TrendingUp,
+  AlertCircle,
+  Zap,
+  Box
 } from 'lucide-react';
 import {
   LineChart,
@@ -17,21 +19,19 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   Cell,
-  ReferenceLine
+  ReferenceLine,
 } from 'recharts';
 import {
-  getTopicVelocity,
+  getTopCategories,
   getMarketGapMatrix,
-  type TopicVelocityData,
   type MarketGapMatrix
 } from '@/lib/charts-data';
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
-  const [topicVelocity, setTopicVelocity] = useState<TopicVelocityData[]>([]);
+  const [topCategories, setTopCategories] = useState<any[]>([]);
   const [marketGaps, setMarketGaps] = useState<MarketGapMatrix[]>([]);
 
   useEffect(() => {
@@ -41,42 +41,21 @@ export default function DashboardPage() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [velocityData, gapData] = await Promise.all([
-        getTopicVelocity(12),
+      const [categories, gapData] = await Promise.all([
+        getTopCategories('launches'),
         getMarketGapMatrix()
       ]);
 
-      setTopicVelocity(velocityData);
+      // Sort categories alphabetically
+      const sortedCategories = categories.sort((a, b) => a.category.localeCompare(b.category));
+
+      setTopCategories(sortedCategories);
       setMarketGaps(gapData);
     } catch (error) {
       console.error('Error loading dashboard:', error);
     }
     setLoading(false);
   };
-
-  // Prepare line chart data for velocity
-  const prepareVelocityChartData = () => {
-    if (topicVelocity.length === 0) return [];
-
-    const allMonths = new Set<string>();
-    topicVelocity.forEach((topic: TopicVelocityData) => {
-      topic.timeSeriesData.forEach(d => allMonths.add(d.month));
-    });
-
-    const sortedMonths = Array.from(allMonths).sort();
-
-    return sortedMonths.map(month => {
-      const dataPoint: any = { month: month.substring(5) };
-      topicVelocity.slice(0, 5).forEach((topic: TopicVelocityData) => {
-        const monthData = topic.timeSeriesData.find(d => d.month === month);
-        dataPoint[topic.topic] = monthData?.launchCount || 0;
-      });
-      return dataPoint;
-    });
-  };
-
-  const velocityChartData = prepareVelocityChartData();
-  const topicColors = ['#3b82f6', '#10b981', '#f97316', '#8b5cf6', '#ef4444'];
 
   const getQuadrantColor = (quadrant: string) => {
     switch (quadrant) {
@@ -88,11 +67,18 @@ export default function DashboardPage() {
     }
   };
 
+  const quadrants = {
+    'blue-ocean': marketGaps.filter(m => m.quadrant === 'blue-ocean'),
+    'red-ocean': marketGaps.filter(m => m.quadrant === 'red-ocean'),
+    'emerging': marketGaps.filter(m => m.quadrant === 'emerging'),
+    'niche': marketGaps.filter(m => m.quadrant === 'niche'),
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">Loading market intelligence...</p>
         </div>
       </div>
@@ -112,100 +98,78 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* 1. TOPIC/TAG VELOCITY - What's Trending */}
-        {/* 1. TOPIC/TAG VELOCITY - What's Trending */}
+        {/* 1. CATEGORY VOLUME CHART (Line Chart) */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="p-8 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <TrendingUp className="w-6 h-6 text-gray-900" />
-                Topic Velocity
+                <BarChart3 className="w-6 h-6 text-blue-600" />
+                Category Volume
               </h2>
               <p className="text-gray-500 mt-1 text-sm font-medium">
-                Launch frequency trends (Last 12 Months)
+                Total number of products launched per category.
               </p>
-            </div>
-            <div className="flex gap-2">
-              {topicVelocity.slice(0, 3).map((topic, i) => (
-                <div key={topic.topic} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-50 border border-gray-100">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topicColors[i] }}></div>
-                  <span className="text-xs font-medium text-gray-600">{topic.topic}</span>
-                </div>
-              ))}
             </div>
           </div>
 
           <div className="p-8">
-            <div className="h-[400px] w-full">
+            <div className="h-[450px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={velocityChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <LineChart data={topCategories} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                   <XAxis
-                    dataKey="month"
-                    axisLine={false}
+                    dataKey="category"
+                    stroke="#9ca3af"
+                    fontSize={12}
                     tickLine={false}
-                    tick={{ fill: '#9ca3af', fontSize: 12 }}
+                    axisLine={false}
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
                     dy={10}
                   />
                   <YAxis
-                    axisLine={false}
+                    stroke="#9ca3af"
+                    fontSize={12}
                     tickLine={false}
-                    tick={{ fill: '#9ca3af', fontSize: 12 }}
+                    axisLine={false}
+                    tickFormatter={(value) => `${value}`}
                   />
                   <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#fff',
-                      border: 'none',
-                      borderRadius: '12px',
-                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                      padding: '12px'
+                    cursor={{ stroke: '#e5e7eb', strokeWidth: 2 }}
+                    content={({ active, payload }) => {
+                      if (active && payload && payload[0]) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-white p-4 border border-gray-100 rounded-xl shadow-xl">
+                            <div className="font-bold text-gray-900 mb-2 text-lg">{data.category}</div>
+                            <div className="flex items-center gap-3 text-sm">
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs uppercase tracking-wider font-semibold">Products</span>
+                                <span className="font-bold text-blue-600 text-lg">{data.launches}</span>
+                              </div>
+                              <div className="w-px h-8 bg-gray-100"></div>
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs uppercase tracking-wider font-semibold">Engagement</span>
+                                <span className="font-bold text-green-600 text-lg">{data.avgEngagement}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
                     }}
-                    itemStyle={{ fontSize: '12px', fontWeight: 500 }}
-                    labelStyle={{ color: '#9ca3af', marginBottom: '8px', fontSize: '11px' }}
                   />
-                  {topicVelocity.slice(0, 5).map((topic: TopicVelocityData, index: number) => (
-                    <Line
-                      key={topic.topic}
-                      type="monotone"
-                      dataKey={topic.topic}
-                      stroke={topicColors[index]}
-                      strokeWidth={3}
-                      dot={false}
-                      activeDot={{ r: 6, strokeWidth: 0 }}
-                      strokeOpacity={0.9}
-                    />
-                  ))}
+                  <Line
+                    type="linear"
+                    dataKey="launches"
+                    stroke="#2563eb"
+                    strokeWidth={3}
+                    dot={{ r: 6, fill: '#2563eb', stroke: '#fff', strokeWidth: 3 }}
+                    activeDot={{ r: 8, fill: '#2563eb', stroke: '#fff', strokeWidth: 3 }}
+                  />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
-
-            {/* Minimalist Trend Cards */}
-            <div className="mt-8 grid grid-cols-2 md:grid-cols-5 gap-4">
-              {topicVelocity.slice(0, 5).map((topic: TopicVelocityData, index: number) => {
-                const growthRate = Math.round(((topic.timeSeriesData.slice(-1)[0]?.launchCount || 0) / (topic.timeSeriesData[0]?.launchCount || 1) - 1) * 100);
-                const isPositive = growthRate > 0;
-
-                return (
-                  <Link
-                    key={topic.topic}
-                    href={`/desk/niche/${encodeURIComponent(topic.topic)}`}
-                    className="group p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topicColors[index] }}></div>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isPositive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                        {isPositive ? '+' : ''}{growthRate}%
-                      </span>
-                    </div>
-                    <div className="text-sm font-bold text-gray-900 mb-1 truncate group-hover:text-blue-600 transition-colors">
-                      {topic.topic}
-                    </div>
-                    <div className="text-xs text-gray-400 font-medium">
-                      {topic.totalLaunches} launches
-                    </div>
-                  </Link>
-                );
-              })}
             </div>
           </div>
         </div>
@@ -271,59 +235,109 @@ export default function DashboardPage() {
               </ScatterChart>
             </ResponsiveContainer>
 
-            {/* Quadrant Legend */}
-            <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  <span className="font-semibold text-gray-900 text-sm">Blue Ocean</span>
-                </div>
-                <p className="text-xs text-gray-500">Low competition, High demand</p>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                  <span className="font-semibold text-gray-900 text-sm">Red Ocean</span>
-                </div>
-                <p className="text-xs text-gray-500">High competition, High demand</p>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                  <span className="font-semibold text-gray-900 text-sm">Emerging</span>
-                </div>
-                <p className="text-xs text-gray-500">High competition, Low demand</p>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-3 h-3 rounded-full bg-gray-500"></div>
-                  <span className="font-semibold text-gray-900 text-sm">Niche</span>
-                </div>
-                <p className="text-xs text-gray-500">Low competition, Low demand</p>
-              </div>
-            </div>
+            {/* Quadrant Breakdown Lists */}
+            <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
 
-            {/* Top Blue Ocean Opportunities */}
-            <div className="mt-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">🎯 Top Blue Ocean Opportunities</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {marketGaps.filter(m => m.quadrant === 'blue-ocean').slice(0, 3).map((gap, index) => (
-                  <Link
-                    key={gap.category}
-                    href={`/desk/niche/${encodeURIComponent(gap.category)}`}
-                    className="p-4 bg-white rounded-lg border border-gray-200 hover:border-blue-500 transition-colors"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-bold text-gray-900">#{index + 1} Opportunity</span>
-                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    </div>
-                    <div className="text-lg font-bold text-gray-900 mb-1 truncate">{gap.category}</div>
-                    <div className="text-xs text-gray-500">
-                      {gap.launchVolume} products  • {gap.avgUpvotes} avg upvotes
-                    </div>
-                  </Link>
-                ))}
+              {/* Blue Ocean */}
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-gray-900">Blue Ocean</span>
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider">High Demand • Low Comp</span>
+                  </div>
+                  <span className="ml-auto bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">{quadrants['blue-ocean'].length}</span>
+                </div>
+                <div className="space-y-2">
+                  {quadrants['blue-ocean'].map(item => (
+                    <Link
+                      href={`/desk/niche/${encodeURIComponent(item.category)}`}
+                      key={item.category}
+                      className="group flex items-center justify-between p-2 rounded hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100"
+                    >
+                      <span className="text-sm text-gray-700 font-medium group-hover:text-blue-600 truncate">{item.category}</span>
+                      <TrendingUp className="w-3 h-3 text-green-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </Link>
+                  ))}
+                  {quadrants['blue-ocean'].length === 0 && <div className="text-sm text-gray-400 italic">No categories found</div>}
+                </div>
               </div>
+
+              {/* Red Ocean */}
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-gray-900">Red Ocean</span>
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider">High Demand • High Comp</span>
+                  </div>
+                  <span className="ml-auto bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full">{quadrants['red-ocean'].length}</span>
+                </div>
+                <div className="space-y-2">
+                  {quadrants['red-ocean'].map(item => (
+                    <Link
+                      href={`/desk/niche/${encodeURIComponent(item.category)}`}
+                      key={item.category}
+                      className="group flex items-center justify-between p-2 rounded hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100"
+                    >
+                      <span className="text-sm text-gray-700 font-medium group-hover:text-blue-600 truncate">{item.category}</span>
+                      <AlertCircle className="w-3 h-3 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </Link>
+                  ))}
+                  {quadrants['red-ocean'].length === 0 && <div className="text-sm text-gray-400 italic">No categories found</div>}
+                </div>
+              </div>
+
+              {/* Emerging */}
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-gray-900">Emerging</span>
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider">Low Demand • High Comp</span>
+                  </div>
+                  <span className="ml-auto bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-0.5 rounded-full">{quadrants['emerging'].length}</span>
+                </div>
+                <div className="space-y-2">
+                  {quadrants['emerging'].map(item => (
+                    <Link
+                      href={`/desk/niche/${encodeURIComponent(item.category)}`}
+                      key={item.category}
+                      className="group flex items-center justify-between p-2 rounded hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100"
+                    >
+                      <span className="text-sm text-gray-700 font-medium group-hover:text-blue-600 truncate">{item.category}</span>
+                      <Zap className="w-3 h-3 text-yellow-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </Link>
+                  ))}
+                  {quadrants['emerging'].length === 0 && <div className="text-sm text-gray-400 italic">No categories found</div>}
+                </div>
+              </div>
+
+              {/* Niche */}
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+                  <div className="w-3 h-3 rounded-full bg-gray-500"></div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-gray-900">Niche</span>
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider">Low Demand • Low Comp</span>
+                  </div>
+                  <span className="ml-auto bg-gray-100 text-gray-700 text-xs font-bold px-2 py-0.5 rounded-full">{quadrants['niche'].length}</span>
+                </div>
+                <div className="space-y-2">
+                  {quadrants['niche'].map(item => (
+                    <Link
+                      href={`/desk/niche/${encodeURIComponent(item.category)}`}
+                      key={item.category}
+                      className="group flex items-center justify-between p-2 rounded hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100"
+                    >
+                      <span className="text-sm text-gray-700 font-medium group-hover:text-blue-600 truncate">{item.category}</span>
+                      <Box className="w-3 h-3 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </Link>
+                  ))}
+                  {quadrants['niche'].length === 0 && <div className="text-sm text-gray-400 italic">No categories found</div>}
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
