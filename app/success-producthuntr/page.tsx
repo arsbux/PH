@@ -34,8 +34,8 @@ export default function SuccessPage() {
                 throw new Error(data.error || 'Signup failed');
             }
 
-            // Success! Redirect to dashboard
-            router.push('/desk');
+            // CRITICAL: Use window.location for hard redirect to establish session
+            window.location.href = '/desk';
         } catch (err: any) {
             setError(err.message);
             setLoading(false);

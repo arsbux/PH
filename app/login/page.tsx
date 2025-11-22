@@ -31,11 +31,8 @@ export default function AuthPage() {
 
       if (error) throw error;
 
-      // CRITICAL: Refresh router to ensure middleware sees the new cookie
-      router.refresh();
-
-      // Redirect
-      router.push(next);
+      // Use window.location for hard redirect to ensure session is established
+      window.location.href = next;
     } catch (error: any) {
       setMessage({ text: error.message, type: 'error' });
       setLoading(false);
