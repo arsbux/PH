@@ -5,40 +5,13 @@ import { supabaseAdmin } from '@/lib/subscription';
 
 export async function POST(request: Request) {
     try {
-        const { email, password, receiptId } = await request.json();
+        const { email, password } = await request.json();
 
         if (!email || !password) {
             return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
         }
 
-        // 1. Verify the email has a valid Whop membership
-        if (receiptId) {
-            const whopResponse = await fetch(`https://api.whop.com/api/v2/memberships?email=${encodeURIComponent(email)}`, {
-                headers: {
-                    'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (!whopResponse.ok) {
-                console.error('Whop API Error:', await whopResponse.text());
-                return NextResponse.json({ error: 'Failed to verify payment' }, { status: 500 });
-            }
-
-            const whopData = await whopResponse.json();
-            const memberships = whopData.data || [];
-
-            const validMembership = memberships.find((m: any) =>
-                (m.status === 'active' || m.status === 'trialing') &&
-                (!process.env.WHOP_PRODUCT_ID || m.product_id === process.env.WHOP_PRODUCT_ID)
-            );
-
-            if (!validMembership) {
-                return NextResponse.json({ error: 'No valid membership found for this email' }, { status: 400 });
-            }
-        }
-
-        // 2. Create Supabase auth user
+        // Create Supabase auth user
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
             email,
             password,
@@ -50,10 +23,10 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: authError.message }, { status: 400 });
         }
 
-        // 3. The trigger will auto-create the public.users record
-        // But we'll update it to set subscription_status = 'active'
-        await new Promise(resolve => setTimeout(resolve, 500)); // Wait for trigger
+        // Wait for trigger to create public.users record
+        await new Promise(resolve => setTimeout(resolve, 500));
 
+        // Update to set subscription_status = 'active' (they paid to get here)
         const { error: updateError } = await supabaseAdmin
             .from('users')
             .update({
@@ -65,7 +38,7 @@ export async function POST(request: Request) {
             console.error('Update Error:', updateError);
         }
 
-        // 4. Create session for the user
+        // Create session for the user
         const supabase = createRouteHandlerClient({ cookies });
         const { data: sessionData, error: sessionError } = await supabase.auth.signInWithPassword({
             email,

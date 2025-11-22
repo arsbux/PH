@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { supabaseAdmin } from '@/lib/subscription';
 
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
@@ -28,9 +29,15 @@ export async function GET(request: Request) {
             }
         );
 
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
-        if (!error) {
+        if (!error && data.user) {
+            // Set user as active (they paid to get to the success page)
+            await supabaseAdmin
+                .from('users')
+                .update({ subscription_status: 'active' })
+                .eq('id', data.user.id);
+
             return NextResponse.redirect(`${origin}${next}`);
         } else {
             console.error('Auth Code Exchange Error:', error);
