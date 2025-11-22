@@ -66,8 +66,8 @@ export default function AdminPage() {
             setSubscribers(subsData || []);
 
             // Calculate stats
-            const active = subsData?.filter(s => s.subscription_status === 'active' || s.subscription_status === 'trialing').length || 0;
-            const canceled = subsData?.filter(s => s.subscription_status === 'canceled').length || 0;
+            const active = subsData?.filter((s: Subscriber) => s.subscription_status === 'active' || s.subscription_status === 'trialing').length || 0;
+            const canceled = subsData?.filter((s: Subscriber) => s.subscription_status === 'canceled').length || 0;
             const total = subsData?.length || 0;
             const mrr = active * 15; // $15 per subscriber
 
@@ -89,12 +89,12 @@ export default function AdminPage() {
 
         // Filter by status
         if (statusFilter !== 'all') {
-            filtered = filtered.filter(s => s.subscription_status === statusFilter);
+            filtered = filtered.filter((s: Subscriber) => s.subscription_status === statusFilter);
         }
 
         // Filter by search term
         if (searchTerm) {
-            filtered = filtered.filter(s =>
+            filtered = filtered.filter((s: Subscriber) =>
                 s.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 s.whop_user_id?.toLowerCase().includes(searchTerm.toLowerCase())
             );
