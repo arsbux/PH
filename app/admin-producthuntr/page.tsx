@@ -385,40 +385,86 @@ export default function AdminPage() {
                             </div>
                         </div>
 
-                        {/* Timeline Chart */}
-                        <div className="bg-gray-900 p-6 rounded-xl border border-gray-800 h-[400px]">
-                            <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-                                <BarChart3 className="w-5 h-5 text-emerald-400" />
-                                Traffic Timeline (Hourly)
-                            </h3>
+                        {/* Modern Traffic Timeline */}
+                        <div className="bg-gray-900 p-6 rounded-xl border border-gray-800 h-[450px] relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+                            <div className="flex items-center justify-between mb-8 relative z-10">
+                                <h3 className="text-lg font-semibold flex items-center gap-2">
+                                    <div className="p-2 bg-emerald-500/10 rounded-lg">
+                                        <BarChart3 className="w-5 h-5 text-emerald-400" />
+                                    </div>
+                                    Traffic Overview
+                                </h3>
+                                <div className="flex items-center gap-2 text-sm">
+                                    <span className="flex items-center gap-1.5 text-gray-400">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                        Live Data
+                                    </span>
+                                </div>
+                            </div>
+
                             {loadingAnalytics ? (
-                                <div className="h-full flex items-center justify-center">
-                                    <Loader2 className="w-8 h-8 animate-spin text-gray-600" />
+                                <div className="h-[300px] flex items-center justify-center">
+                                    <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
                                 </div>
                             ) : (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={analyticsData?.timeline || []}>
-                                        <defs>
-                                            <linearGradient id="colorVisits" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
-                                                <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-                                        <XAxis
-                                            dataKey="date"
-                                            tickFormatter={(str) => new Date(str).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            stroke="#9CA3AF"
-                                            fontSize={12}
-                                        />
-                                        <YAxis stroke="#9CA3AF" fontSize={12} />
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
-                                            labelFormatter={(label) => new Date(label).toLocaleString()}
-                                        />
-                                        <Area type="monotone" dataKey="count" stroke="#10B981" fillOpacity={1} fill="url(#colorVisits)" />
-                                    </AreaChart>
-                                </ResponsiveContainer>
+                                <div className="h-[320px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={analyticsData?.timeline || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                            <defs>
+                                                <linearGradient id="colorVisits" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
+                                                    <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" vertical={false} />
+                                            <XAxis
+                                                dataKey="date"
+                                                tickFormatter={(str) => new Date(str).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                stroke="#6B7280"
+                                                fontSize={12}
+                                                tickLine={false}
+                                                axisLine={false}
+                                                dy={10}
+                                            />
+                                            <YAxis
+                                                stroke="#6B7280"
+                                                fontSize={12}
+                                                tickLine={false}
+                                                axisLine={false}
+                                                dx={-10}
+                                            />
+                                            <Tooltip
+                                                content={({ active, payload, label }) => {
+                                                    if (active && payload && payload.length) {
+                                                        return (
+                                                            <div className="bg-gray-900 border border-gray-700 p-4 rounded-xl shadow-2xl backdrop-blur-sm bg-opacity-90">
+                                                                <p className="text-gray-400 text-xs mb-2">
+                                                                    {label ? new Date(label).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                                                                </p>
+                                                                <p className="text-emerald-400 font-bold text-xl flex items-center gap-2">
+                                                                    {payload[0].value}
+                                                                    <span className="text-xs font-normal text-gray-500">Visitors</span>
+                                                                </p>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                }}
+                                            />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="count"
+                                                stroke="#10B981"
+                                                strokeWidth={3}
+                                                fillOpacity={1}
+                                                fill="url(#colorVisits)"
+                                                activeDot={{ r: 6, strokeWidth: 0, fill: '#10B981' }}
+                                            />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
                             )}
                         </div>
 

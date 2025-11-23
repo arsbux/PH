@@ -17,3 +17,10 @@ CREATE INDEX IF NOT EXISTS idx_analytics_visits_created_at ON analytics_visits(c
 
 -- Create index for path analysis
 CREATE INDEX IF NOT EXISTS idx_analytics_visits_page_path ON analytics_visits(page_path);
+
+-- Disable Row Level Security to remove all restrictions
+ALTER TABLE analytics_visits DISABLE ROW LEVEL SECURITY;
+
+-- Policies are not needed when RLS is disabled, but we keep the grants
+-- Grant permissions to the table
+GRANT ALL ON analytics_visits TO anon, authenticated, service_role;
