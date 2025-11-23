@@ -390,6 +390,13 @@ export default function Home() {
                                     </div>
                                 </div>
 
+                                {/* Mobile Connector 1 */}
+                                <div className="md:hidden flex justify-center -my-6 relative z-0">
+                                    <div className="h-16 w-0.5 border-l-2 border-dashed border-gray-300 relative">
+                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-orange-500 rounded-full shadow-sm shadow-orange-200"></div>
+                                    </div>
+                                </div>
+
                                 {/* Center Column: R2 Deep Analysis */}
                                 <div className="flex justify-center">
                                     <div className="bg-white border border-gray-200 px-8 py-8 shadow-sm text-center min-w-[240px] relative">
@@ -403,6 +410,13 @@ export default function Home() {
                                             <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
                                             <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* Mobile Connector 2 */}
+                                <div className="md:hidden flex justify-center -my-6 relative z-0">
+                                    <div className="h-16 w-0.5 border-l-2 border-dashed border-gray-300 relative">
+                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-orange-500 rounded-full shadow-sm shadow-orange-200"></div>
                                     </div>
                                 </div>
 
@@ -422,14 +436,6 @@ export default function Home() {
                                     </div>
                                 </div>
 
-                            </div>
-                            {/* Mobile flow connectors */}
-                            <div className="md:hidden flex flex-col items-center mt-4 space-y-2">
-                                <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
-                                <div className="border-l-2 border-dashed border-gray-300 h-6"></div>
-                                <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
-                                <div className="border-l-2 border-dashed border-gray-300 h-6"></div>
-                                <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
                             </div>
                         </div>
                     </div>
