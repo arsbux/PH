@@ -1,10 +1,14 @@
 import type { Metadata, Viewport } from 'next'
+import { Outfit } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/components/AuthProvider'
+import { AnalyticsTracker } from '@/components/AnalyticsTracker'
 
 const title = 'Product Huntr - Use Product Hunt Data to Find Ideas and Opportunities'
 const description = 'Discover your next big opportunity with Product Huntr. Analyze 12K+ Product Hunt launches to find validated ideas, market gaps, and untapped opportunities. AI-powered insights for builders and makers.'
 const image = 'https://rafddhfuidgiamkxdqyg.supabase.co/storage/v1/object/public/avatars/5e59793f-d2b0-47bc-8321-bc69fdf5aa2f/socialshare1.png'
+
+const font = Outfit({ subsets: ['latin'] });
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -74,8 +78,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
-        <AuthProvider>{children}</AuthProvider>
+      <body className={font.className}>
+        <AuthProvider>
+          <AnalyticsTracker />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   )
