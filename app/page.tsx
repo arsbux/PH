@@ -392,8 +392,8 @@ export default function Home() {
 
                                 {/* Mobile Connector 1 */}
                                 <div className="md:hidden flex justify-center -my-6 relative z-0">
-                                    <div className="h-16 w-0.5 border-l-2 border-dashed border-gray-300 relative">
-                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-orange-500 rounded-full shadow-sm shadow-orange-200"></div>
+                                    <div className="h-16 w-0.5 border-l-2 border-dashed border-gray-300 relative overflow-hidden">
+                                        <div className="absolute left-1/2 -translate-x-1/2 w-3 h-3 bg-orange-500 rounded-full shadow-sm shadow-orange-200 animate-flow-vertical"></div>
                                     </div>
                                 </div>
 
@@ -415,8 +415,8 @@ export default function Home() {
 
                                 {/* Mobile Connector 2 */}
                                 <div className="md:hidden flex justify-center -my-6 relative z-0">
-                                    <div className="h-16 w-0.5 border-l-2 border-dashed border-gray-300 relative">
-                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-orange-500 rounded-full shadow-sm shadow-orange-200"></div>
+                                    <div className="h-16 w-0.5 border-l-2 border-dashed border-gray-300 relative overflow-hidden">
+                                        <div className="absolute left-1/2 -translate-x-1/2 w-3 h-3 bg-orange-500 rounded-full shadow-sm shadow-orange-200 animate-flow-vertical"></div>
                                     </div>
                                 </div>
 
@@ -1523,6 +1523,25 @@ export default function Home() {
         }
         .animation-delay-4000 {
           animation-delay: 4s;
+        }
+        @keyframes flow-vertical {
+          0% {
+            top: 0%;
+            opacity: 0;
+          }
+          15% {
+            opacity: 1;
+          }
+          85% {
+            opacity: 1;
+          }
+          100% {
+            top: 100%;
+            opacity: 0;
+          }
+        }
+        .animate-flow-vertical {
+          animation: flow-vertical 2s linear infinite;
         }
       `}</style>
         </div >
