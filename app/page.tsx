@@ -423,6 +423,14 @@ export default function Home() {
                                 </div>
 
                             </div>
+                            {/* Mobile flow connectors */}
+                            <div className="md:hidden flex flex-col items-center mt-4 space-y-2">
+                                <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
+                                <div className="border-l-2 border-dashed border-gray-300 h-6"></div>
+                                <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
+                                <div className="border-l-2 border-dashed border-gray-300 h-6"></div>
+                                <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
+                            </div>
                         </div>
                     </div>
 
@@ -587,6 +595,8 @@ export default function Home() {
                                     </div>
                                 )}
                             </div>
+
+
                         </div>
                     </div>
                 </div>
@@ -758,12 +768,12 @@ export default function Home() {
             </section >
 
             {/* 3. Market Opportunities Section */}
-            <section id="opportunities" className="py-16 md:py-32 px-4 md:px-6 bg-black relative overflow-hidden">
+            < section id="opportunities" className="py-16 md:py-32 px-4 md:px-6 bg-black relative overflow-hidden" >
                 {/* Background decorative elements */}
-                <div className="absolute inset-0 opacity-5">
+                < div className="absolute inset-0 opacity-5" >
                     <div className="absolute top-20 left-20 w-96 h-96 bg-orange-500 rounded-full blur-3xl"></div>
                     <div className="absolute bottom-20 right-20 w-96 h-96 bg-orange-600 rounded-full blur-3xl"></div>
-                </div>
+                </div >
 
                 <div className="max-w-7xl mx-auto relative z-10">
                     {loadingGaps ? (
@@ -1069,10 +1079,10 @@ export default function Home() {
                         </div>
                     )}
                 </div>
-            </section>
+            </section >
 
             {/* FAQ Section */}
-            <section className="py-32 px-6 bg-gradient-to-br from-[#FFF9F5] to-[#FFF5F0] relative overflow-hidden">
+            < section className="py-32 px-6 bg-gradient-to-br from-[#FFF9F5] to-[#FFF5F0] relative overflow-hidden" >
                 <div className="absolute inset-0 opacity-5">
                     <div className="absolute top-20 right-20 w-96 h-96 bg-orange-500 rounded-full blur-3xl"></div>
                 </div>
@@ -1144,10 +1154,10 @@ export default function Home() {
                         </Link>
                     </div>
                 </div>
-            </section>
+            </section >
 
             {/* Marquee Section #2 - After FAQ */}
-            <section className="py-16 bg-gradient-to-b from-white to-gray-50 overflow-hidden border-b border-orange-100">
+            < section className="py-16 bg-gradient-to-b from-white to-gray-50 overflow-hidden border-b border-orange-100" >
                 <div className="mb-12 text-center">
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">
                         Discover More Successful Launches
@@ -1262,7 +1272,7 @@ export default function Home() {
                         ))}
                     </div>
                 </div>
-            </section>
+            </section >
 
             {/* CTA Section */}
             < section className="py-32 px-6 bg-[#FFF5F0] border-t border-orange-100" >
