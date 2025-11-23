@@ -13,7 +13,7 @@
   .text-balance {
     text-wrap: balance;
   }
-  
+
   .line-clamp-2 {
     overflow: hidden;
     display: -webkit-box;
@@ -21,12 +21,40 @@
     -webkit-line-clamp: 2;
     line-clamp: 2;
   }
-  
+
   .line-clamp-3 {
     overflow: hidden;
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
     line-clamp: 3;
+  }
+
+  @keyframes marquee {
+    0% {
+      transform: translateX(0%);
+    }
+
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  @keyframes marquee-reverse {
+    0% {
+      transform: translateX(-50%);
+    }
+
+    100% {
+      transform: translateX(0%);
+    }
+  }
+
+  .animate-marquee {
+    animation: marquee 18s linear infinite;
+  }
+
+  .animate-marquee-reverse {
+    animation: marquee-reverse 18s linear infinite;
   }
 }

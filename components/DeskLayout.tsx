@@ -22,7 +22,7 @@ export default function DeskLayout({ children }: DeskLayoutProps) {
 
   const navItems = [
     { href: '/desk', label: 'Market Intelligence', icon: TrendingUp },
-    { href: '/desk/niche', label: 'Niche Analysis', icon: Target },
+    { href: '/desk/niche', label: 'Categories', icon: Target },
     { href: '/desk/idea-validator', label: 'Idea Validator', icon: Lightbulb },
     { href: '/desk/opportunities', label: 'Opportunities', icon: Sparkles },
   ];
@@ -83,19 +83,19 @@ export default function DeskLayout({ children }: DeskLayoutProps) {
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || (item.href !== '/desk' && pathname.startsWith(item.href));
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all ${isActive
-                  ? 'bg-gray-100 text-gray-900'
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive
+                  ? 'bg-gray-900 text-white shadow-sm'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-gray-900' : 'text-gray-500'}`} />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-gray-500'}`} />
                 {item.label}
               </Link>
             );
@@ -106,19 +106,19 @@ export default function DeskLayout({ children }: DeskLayoutProps) {
         <div className="px-3 pb-3 space-y-1 border-t border-neutral-100 pt-3">
           {bottomNavItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || (item.href !== '/desk' && pathname.startsWith(item.href));
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all ${isActive
-                  ? 'bg-gray-100 text-gray-900'
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all relative ${isActive
+                  ? 'bg-gray-900 text-white shadow-sm'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-gray-900' : 'text-gray-500'}`} />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-gray-500'}`} />
                 {item.label}
               </Link>
             );

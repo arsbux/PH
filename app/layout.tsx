@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/components/AuthProvider'
 
-const title = 'Product Huntr - #1 Growth Hacking & Analytics Tool for Product Hunt'
-const description = 'The ultimate growth hacking platform for Product Hunt. Analyze 50,000+ launches, spot viral trends, and master your launch strategy. Trusted by top growth hackers, agencies, and makers to dominate the leaderboard.'
+const title = 'Product Huntr - Use Product Hunt Data to Find Ideas and Opportunities'
+const description = 'Discover your next big opportunity with Product Huntr. Analyze 12K+ Product Hunt launches to find validated ideas, market gaps, and untapped opportunities. AI-powered insights for builders and makers.'
 const image = 'https://rafddhfuidgiamkxdqyg.supabase.co/storage/v1/object/public/avatars/5e59793f-d2b0-47bc-8321-bc69fdf5aa2f/socialshare1.png'
 
 export const viewport: Viewport = {

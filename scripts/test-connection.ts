@@ -19,9 +19,16 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 console.log('Connecting to Supabase...');
 
+// Define the shape of the data we expect
+interface LaunchData {
+    name: string;
+    tagline: string;
+    ai_analysis: any; // Using any to bypass the Json type restriction for this script
+}
+
 async function analyzeNiches() {
     try {
-        const { data: launches, error } = await supabase
+        const { data, error } = await supabase
             .from('ph_launches')
             .select('ai_analysis, name, tagline')
             .not('ai_analysis', 'is', null)
@@ -31,6 +38,9 @@ async function analyzeNiches() {
             console.error('Error fetching data:', error);
             return;
         }
+
+        // Cast the data to our interface
+        const launches = data as unknown as LaunchData[];
 
         if (!launches || launches.length === 0) {
             console.log('No data found');

@@ -40,6 +40,21 @@ const CATEGORY_MAPPING: Record<string, string> = {
     'Social Media': 'Marketing & Growth',
     'Analytics': 'Marketing & Growth',
     'Growth Hacking': 'Marketing & Growth',
+    'Fintech': 'Fintech & Finance',
+    'Finance': 'Fintech & Finance',
+    'Investing': 'Fintech & Finance',
+    'Crypto': 'Web3 & Crypto',
+    'Web3': 'Web3 & Crypto',
+    'Blockchain': 'Web3 & Crypto',
+    'Health': 'Health & Wellness',
+    'Wellness': 'Health & Wellness',
+    'Fitness': 'Health & Wellness',
+    'Education': 'Education & Learning',
+    'EdTech': 'Education & Learning',
+    'Learning': 'Education & Learning',
+    'E-commerce': 'E-commerce & Retail',
+    'Retail': 'E-commerce & Retail',
+    'DTC': 'E-commerce & Retail',
 };
 
 function mapNicheToCategory(niche: string): string {
@@ -48,13 +63,19 @@ function mapNicheToCategory(niche: string): string {
 
     // Keyword match
     const lower = niche.toLowerCase();
-    if (lower.includes('ai') || lower.includes('gpt') || lower.includes('bot')) return 'AI & Machine Learning';
-    if (lower.includes('dev') || lower.includes('code') || lower.includes('api') || lower.includes('sdk')) return 'Developer Tools';
-    if (lower.includes('productiv') || lower.includes('task') || lower.includes('notion') || lower.includes('organi')) return 'Productivity & Organization';
-    if (lower.includes('design') || lower.includes('art') || lower.includes('color') || lower.includes('ui') || lower.includes('ux')) return 'Design & Creative';
-    if (lower.includes('market') || lower.includes('seo') || lower.includes('social') || lower.includes('ad')) return 'Marketing & Growth';
+    if (lower.includes('ai') || lower.includes('gpt') || lower.includes('bot') || lower.includes('llm')) return 'AI & Machine Learning';
+    if (lower.includes('dev') || lower.includes('code') || lower.includes('api') || lower.includes('sdk') || lower.includes('database')) return 'Developer Tools';
+    if (lower.includes('productiv') || lower.includes('task') || lower.includes('notion') || lower.includes('organi') || lower.includes('project')) return 'Productivity & Organization';
+    if (lower.includes('design') || lower.includes('art') || lower.includes('color') || lower.includes('ui') || lower.includes('ux') || lower.includes('video') || lower.includes('image')) return 'Design & Creative';
+    if (lower.includes('market') || lower.includes('seo') || lower.includes('social') || lower.includes('ad') || lower.includes('email') || lower.includes('content')) return 'Marketing & Growth';
+    if (lower.includes('finance') || lower.includes('money') || lower.includes('invest') || lower.includes('bank') || lower.includes('pay')) return 'Fintech & Finance';
+    if (lower.includes('crypto') || lower.includes('web3') || lower.includes('chain') || lower.includes('token') || lower.includes('nft')) return 'Web3 & Crypto';
+    if (lower.includes('health') || lower.includes('fit') || lower.includes('well') || lower.includes('med') || lower.includes('gym')) return 'Health & Wellness';
+    if (lower.includes('learn') || lower.includes('edu') || lower.includes('teach') || lower.includes('course') || lower.includes('school')) return 'Education & Learning';
+    if (lower.includes('shop') || lower.includes('store') || lower.includes('commerce') || lower.includes('retail') || lower.includes('cart')) return 'E-commerce & Retail';
 
-    return 'Other';
+    // Default to the niche itself if no category is found, instead of "Other"
+    return niche;
 }
 
 export async function getTopicVelocity(months = 12): Promise<TopicVelocityData[]> {
@@ -1174,3 +1195,369 @@ export async function getSuccessPatterns(): Promise<SuccessPattern[]> {
         .slice(0, 50);
 }
 
+// ============================================
+// 11. YESTERDAY'S SNAPSHOT
+// ============================================
+
+export interface YesterdayData {
+    chartData: { name: string; value: number; color: string }[];
+    topLaunches: {
+        name: string;
+        votes: number;
+        comments: number;
+        niche: string;
+        tagline: string;
+        thumbnail_url?: string;
+        website_url?: string;
+        launched_at: string;
+    }[];
+    metrics: {
+        totalLaunches: number;
+        aiPercentage: number;
+        avgVotes: number;
+        topCategory: string;
+    };
+}
+
+function getColorForCategory(category: string): string {
+    const colors: Record<string, string> = {
+        'AI & Machine Learning': '#8b5cf6', // Violet
+        'Developer Tools': '#3b82f6', // Blue
+        'Productivity & Organization': '#10b981', // Emerald
+        'Design & Creative': '#f43f5e', // Rose
+        'Marketing & Growth': '#f59e0b', // Amber
+        'Fintech & Finance': '#0ea5e9', // Sky Blue
+        'Web3 & Crypto': '#6366f1', // Indigo
+        'Health & Wellness': '#ec4899', // Pink
+        'Education & Learning': '#14b8a6', // Teal
+        'E-commerce & Retail': '#f97316', // Orange
+        'Other': '#9ca3af' // Gray
+    };
+
+    if (colors[category]) return colors[category];
+
+    // Simple hash for dynamic colors
+    let hash = 0;
+    for (let i = 0; i < category.length; i++) {
+        hash = category.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+    return '#' + '00000'.substring(0, 6 - c.length) + c;
+}
+
+export async function getYesterdayLaunchesData(): Promise<YesterdayData> {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
+
+    const endOfYesterday = new Date(yesterday);
+    endOfYesterday.setHours(23, 59, 59, 999);
+
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('name, votes_count, comments_count, tagline, ai_analysis, launched_at, thumbnail_url, website_url')
+        .gte('launched_at', yesterday.toISOString())
+        .lte('launched_at', endOfYesterday.toISOString())
+        .order('votes_count', { ascending: false });
+
+    if (!launches || launches.length === 0) {
+        return {
+            chartData: [],
+            topLaunches: [],
+            metrics: { totalLaunches: 0, aiPercentage: 0, avgVotes: 0, topCategory: 'N/A' }
+        };
+    }
+
+    // Process Categories
+    const categoryMap = new Map<string, number>();
+    let aiCount = 0;
+    let totalVotes = 0;
+
+    launches.forEach(launch => {
+        const niche = launch.ai_analysis?.niche || 'Other';
+        const category = mapNicheToCategory(niche);
+        categoryMap.set(category, (categoryMap.get(category) || 0) + 1);
+
+        // Check for AI
+        const isAI = niche.toLowerCase().includes('ai') ||
+            launch.name.toLowerCase().includes('ai') ||
+            launch.tagline.toLowerCase().includes('ai');
+        if (isAI) aiCount++;
+
+        totalVotes += launch.votes_count || 0;
+    });
+
+    // Format Chart Data
+    const chartData = Array.from(categoryMap.entries())
+        .map(([name, value]) => ({
+            name,
+            value,
+            color: getColorForCategory(name)
+        }))
+        .sort((a, b) => b.value - a.value);
+
+    // Metrics
+    const totalLaunches = launches.length;
+    const aiPercentage = Math.round((aiCount / totalLaunches) * 100);
+    const avgVotes = Math.round(totalVotes / totalLaunches);
+    const topCategory = chartData.length > 0 ? chartData[0].name : 'N/A';
+
+    // Top 50 Launches
+    const topLaunches = launches.slice(0, 50).map(l => ({
+        name: l.name,
+        votes: l.votes_count || 0,
+        comments: l.comments_count || 0,
+        niche: l.ai_analysis?.niche || 'Unknown',
+        tagline: l.tagline,
+        thumbnail_url: l.thumbnail_url,
+        website_url: l.website_url,
+        launched_at: l.launched_at
+    }));
+
+    return {
+        chartData,
+        topLaunches,
+        metrics: {
+            totalLaunches,
+            aiPercentage,
+            avgVotes,
+            topCategory
+        }
+    };
+}
+
+
+// ============================================
+// 8. DAILY LAUNCH PULSE
+// ============================================
+
+export interface DailyLaunchData {
+    date: string;
+    launches: {
+        id: string;
+        name: string;
+        tagline: string;
+        votes: number;
+        category: string;
+        rank: number;
+        thumbnail?: string;
+    }[];
+    categoryStats: {
+        name: string;
+        count: number;
+        totalVotes: number;
+    }[];
+    topProduct: {
+        name: string;
+        votes: number;
+    } | null;
+    mostDiscussed: {
+        name: string;
+        comments: number;
+    } | null;
+    mostEngaged: {
+        name: string;
+        comments: number;
+        votes: number;
+        totalEngagement: number;
+    } | null;
+    topCategory: {
+        name: string;
+        totalVotes: number;
+    } | null;
+    aiSummary: string;
+}
+
+export async function getDailyLaunchData(): Promise<DailyLaunchData | null> {
+    // 1. Get the most recent date with launches
+    const { data: latestLaunch } = await supabase
+        .from('ph_launches')
+        .select('launched_at')
+        .order('launched_at', { ascending: false })
+        .limit(1)
+        .single();
+
+    if (!latestLaunch) return null;
+
+    const targetDate = new Date(latestLaunch.launched_at).toISOString().split('T')[0];
+
+    // 2. Fetch all launches for that date
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('id, name, tagline, votes_count, comments_count, ai_analysis, thumbnail_url')
+        .gte('launched_at', `${targetDate}T00:00:00`)
+        .lt('launched_at', `${targetDate}T23:59:59`)
+        .order('votes_count', { ascending: false });
+
+    if (!launches || launches.length === 0) return null;
+
+    // 3. Process data
+    const processedLaunches = launches.map((launch, index) => ({
+        id: launch.id,
+        name: launch.name,
+        tagline: launch.tagline,
+        votes: launch.votes_count,
+        comments: launch.comments_count || 0,
+        category: mapNicheToCategory(launch.ai_analysis?.niche || 'Unknown'),
+        rank: index + 1,
+        thumbnail: launch.thumbnail_url
+    }));
+
+    // Category Stats
+    const categoryMap = new Map<string, { count: number; totalVotes: number }>();
+    processedLaunches.forEach(launch => {
+        if (!categoryMap.has(launch.category)) {
+            categoryMap.set(launch.category, { count: 0, totalVotes: 0 });
+        }
+        const stats = categoryMap.get(launch.category)!;
+        stats.count += 1;
+        stats.totalVotes += launch.votes;
+    });
+
+    const categoryStats = Array.from(categoryMap.entries())
+        .map(([name, stats]) => ({
+            name,
+            count: stats.count,
+            totalVotes: stats.totalVotes
+        }))
+        .sort((a, b) => b.count - a.count);
+
+    // Top Highlights
+    const topProduct = processedLaunches[0] ? { name: processedLaunches[0].name, votes: processedLaunches[0].votes } : null;
+
+    // Find most discussed (comments only)
+    const sortedByComments = [...processedLaunches].sort((a, b) => b.comments - a.comments);
+    const mostDiscussed = sortedByComments[0] ? { name: sortedByComments[0].name, comments: sortedByComments[0].comments } : null;
+
+    // Find most engaged (votes + comments * 2)
+    const sortedByEngagement = [...processedLaunches].sort((a, b) => (b.votes + b.comments * 2) - (a.votes + a.comments * 2));
+    const mostEngaged = sortedByEngagement[0] ? {
+        name: sortedByEngagement[0].name,
+        comments: sortedByEngagement[0].comments,
+        votes: sortedByEngagement[0].votes,
+        totalEngagement: sortedByEngagement[0].votes + (sortedByEngagement[0].comments * 2)
+    } : null;
+
+    const topCategory = categoryStats.sort((a, b) => b.totalVotes - a.totalVotes)[0] || null;
+
+    // Generate AI Summary (Opportunity Focused)
+    const totalVotes = processedLaunches.reduce((sum, l) => sum + l.votes, 0);
+    const dominantCategory = categoryStats[0];
+
+    // Find "Blue Ocean" opportunities: Categories with high avg votes but low count (not the top category)
+    const opportunities = categoryStats
+        .filter(c => c.count < categoryStats[0].count && c.count > 0) // Not the most crowded
+        .map(c => ({ ...c, avgVotes: c.totalVotes / c.count }))
+        .sort((a, b) => b.avgVotes - a.avgVotes);
+
+    const topOpportunity = opportunities[0];
+
+    let summary = `Builders, pay attention: While ${dominantCategory.name} is crowded with ${dominantCategory.count} launches, the real opportunity might be in **${topOpportunity?.name || 'niche markets'}**. `;
+
+    if (topOpportunity) {
+        summary += `This category shows high demand (avg ${Math.round(topOpportunity.avgVotes)} votes/launch) but low supply. `;
+    }
+
+    if (mostDiscussed) {
+        summary += `User discussions are heating up around **${mostDiscussed.name}**, suggesting a specific pain point in the ${mapNicheToCategory(processedLaunches.find(l => l.name === mostDiscussed.name)?.category || '')} space. `;
+    }
+
+    summary += `The market is signaling a need for quality over quantity—${processedLaunches.length} products launched, but engagement is concentrating on those solving real problems.`;
+
+    return {
+        date: targetDate,
+        launches: processedLaunches.slice(0, 50), // Top 50
+        categoryStats,
+        topProduct,
+        mostDiscussed,
+        mostEngaged,
+        topCategory,
+        aiSummary: summary
+    };
+}
+
+export interface MarketGapItem {
+    x: number; // Competition (Launch Count)
+    y: number; // Engagement (Avg Votes)
+    z: number; // Market Size (Total Votes)
+    name: string;
+    fill: string;
+    opportunityScore: number;
+}
+
+export interface MarketGapData {
+    scatterData: MarketGapItem[];
+    topOpportunity: {
+        name: string;
+        avgVotes: number;
+        competition: number;
+        description: string;
+    } | null;
+}
+
+export async function getMarketGapData(): Promise<MarketGapData | null> {
+    // Fetch last 30 days of data for a robust analysis
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const startDate = thirtyDaysAgo.toISOString();
+
+    const { data: launches } = await supabase
+        .from('ph_launches')
+        .select('votes_count, ai_analysis')
+        .gte('launched_at', startDate);
+
+    if (!launches || launches.length === 0) return null;
+
+    // Aggregate by Category
+    const categoryMap = new Map<string, { count: number; totalVotes: number }>();
+
+    launches.forEach(launch => {
+        const category = mapNicheToCategory(launch.ai_analysis?.niche || 'Unknown');
+        if (!categoryMap.has(category)) {
+            categoryMap.set(category, { count: 0, totalVotes: 0 });
+        }
+        const stats = categoryMap.get(category)!;
+        stats.count += 1;
+        stats.totalVotes += launch.votes_count;
+    });
+
+    // Transform to Scatter Data
+    const scatterData: MarketGapItem[] = Array.from(categoryMap.entries())
+        .map(([name, stats]) => {
+            const avgVotes = stats.totalVotes / stats.count;
+            // Opportunity Score: High Avg Votes / Low Count
+            // We weigh Avg Votes higher
+            const opportunityScore = avgVotes / Math.sqrt(stats.count);
+
+            let fill = '#9CA3AF'; // Gray (Neutral)
+            if (opportunityScore > 50) fill = '#10B981'; // Green (Opportunity)
+            if (stats.count > 50 && avgVotes < 50) fill = '#EF4444'; // Red (Saturated)
+            if (stats.count > 50 && avgVotes > 100) fill = '#F59E0B'; // Orange (Competitive but High Reward)
+
+            return {
+                x: stats.count,
+                y: Math.round(avgVotes),
+                z: stats.totalVotes, // Bubble size
+                name,
+                fill,
+                opportunityScore
+            };
+        })
+        .filter(item => item.name !== 'Unknown' && item.x > 2); // Filter out noise
+
+    // Find Top Opportunity
+    const sortedOpportunities = [...scatterData].sort((a, b) => b.opportunityScore - a.opportunityScore);
+    const topOpp = sortedOpportunities[0];
+
+    const topOpportunity = topOpp ? {
+        name: topOpp.name,
+        avgVotes: topOpp.y,
+        competition: topOpp.x,
+        description: `High demand (${topOpp.y} avg votes) with relatively low competition (${topOpp.x} launches in 30 days).`
+    } : null;
+
+    return {
+        scatterData,
+        topOpportunity
+    };
+}
