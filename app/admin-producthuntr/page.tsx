@@ -23,6 +23,7 @@ export default function AdminPage() {
     // Analytics State
     const [analyticsData, setAnalyticsData] = useState<any>(null);
     const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+    const [timeframe, setTimeframe] = useState('24h');
 
     // New state for 2-step process
     const [checkMode, setCheckMode] = useState(false);
@@ -31,15 +32,15 @@ export default function AdminPage() {
     const [processedItems, setProcessedItems] = useState<ProcessedItem[]>([]);
 
     useEffect(() => {
-        if (isAuthenticated && activeTab === 'analytics' && !analyticsData) {
+        if (isAuthenticated && activeTab === 'analytics') {
             fetchAnalytics();
         }
-    }, [isAuthenticated, activeTab]);
+    }, [isAuthenticated, activeTab, timeframe]);
 
     const fetchAnalytics = async () => {
         setLoadingAnalytics(true);
         try {
-            const res = await fetch('/api/admin/analytics');
+            const res = await fetch(`/api/admin/analytics?timeframe=${timeframe}`);
             const data = await res.json();
             if (res.ok) {
                 setAnalyticsData(data);
@@ -50,6 +51,112 @@ export default function AdminPage() {
             setLoadingAnalytics(false);
         }
     };
+
+    // ...
+
+    {/* Modern Traffic Timeline */ }
+    <div className="bg-gray-900 p-6 rounded-xl border border-gray-800 h-[450px] relative overflow-hidden group">
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+        <div className="flex items-center justify-between mb-8 relative z-10">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+                <div className="p-2 bg-emerald-500/10 rounded-lg">
+                    <BarChart3 className="w-5 h-5 text-emerald-400" />
+                </div>
+                Traffic Overview
+            </h3>
+            <div className="flex items-center gap-2">
+                <div className="flex bg-gray-800 rounded-lg p-1 border border-gray-700">
+                    {['24h', '7d', '30d', '90d'].map((tf) => (
+                        <button
+                            key={tf}
+                            onClick={() => setTimeframe(tf)}
+                            className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${timeframe === tf
+                                ? 'bg-gray-700 text-white shadow-sm'
+                                : 'text-gray-400 hover:text-gray-200'
+                                }`}
+                        >
+                            {tf}
+                        </button>
+                    ))}
+                </div>
+                <span className="flex items-center gap-1.5 text-gray-400 text-xs ml-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    Live
+                </span>
+            </div>
+        </div>
+
+        {loadingAnalytics ? (
+            <div className="h-[300px] flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+            </div>
+        ) : (
+            <div className="h-[320px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={analyticsData?.timeline || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <defs>
+                            <linearGradient id="colorVisits" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
+                                <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" vertical={false} />
+                        <XAxis
+                            dataKey="date"
+                            tickFormatter={(str) => {
+                                const date = new Date(str);
+                                if (timeframe === '24h') {
+                                    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                }
+                                return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                            }}
+                            stroke="#6B7280"
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                            dy={10}
+                            minTickGap={30}
+                        />
+                        <YAxis
+                            stroke="#6B7280"
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                            dx={-10}
+                        />
+                        <Tooltip
+                            content={({ active, payload, label }) => {
+                                if (active && payload && payload.length) {
+                                    return (
+                                        <div className="bg-gray-900 border border-gray-700 p-4 rounded-xl shadow-2xl backdrop-blur-sm bg-opacity-90">
+                                            <p className="text-gray-400 text-xs mb-2">
+                                                {label ? new Date(label).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                                            </p>
+                                            <p className="text-emerald-400 font-bold text-xl flex items-center gap-2">
+                                                {payload[0].value}
+                                                <span className="text-xs font-normal text-gray-500">Visitors</span>
+                                            </p>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            }}
+                        />
+                        <Area
+                            type="monotone"
+                            dataKey="count"
+                            stroke="#10B981"
+                            strokeWidth={3}
+                            fillOpacity={1}
+                            fill="url(#colorVisits)"
+                            activeDot={{ r: 6, strokeWidth: 0, fill: '#10B981' }}
+                        />
+                    </AreaChart>
+                </ResponsiveContainer>
+            </div>
+        )}
+    </div>
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
