@@ -5,8 +5,8 @@ import type { NextRequest } from 'next/server';
 export async function middleware(request: NextRequest) {
     const path = request.nextUrl.pathname;
 
-    // ONLY check auth for /desk and /admin
-    if (!path.startsWith('/desk') && !path.startsWith('/admin')) {
+    // ONLY check auth for /admin
+    if (!path.startsWith('/admin')) {
         return NextResponse.next();
     }
 
@@ -59,5 +59,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/desk/:path*', '/admin/:path*'],
+    matcher: ['/admin/:path*'],
 };

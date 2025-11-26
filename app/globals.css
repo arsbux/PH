@@ -57,4 +57,29 @@
   .animate-marquee-reverse {
     animation: marquee-reverse 18s linear infinite;
   }
+
+  /* Custom scrollbar styling - black theme */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #0a0a0a;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #000;
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #1a1a1a;
+  }
+
+  /* Firefox scrollbar */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #000 #0a0a0a;
+  }
 }

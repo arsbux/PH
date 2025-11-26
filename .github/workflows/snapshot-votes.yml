@@ -1,0 +1,32 @@
+name: Snapshot Product Hunt Votes
+
+on:
+  schedule:
+    # Run every 5 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Snapshot votes
+        run: |
+          response=$(curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -w "\n%{http_code}" \
+            https://your-domain.vercel.app/api/snapshot-votes)
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" -ne 200 ]; then
+            echo "❌ Snapshot failed with status $http_code"
+            exit 1
+          fi
+          
+          echo "✅ Snapshot successful"

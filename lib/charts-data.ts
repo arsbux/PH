@@ -20,7 +20,7 @@ export interface TopicVelocityData {
     trend: 'rising' | 'stable' | 'declining';
 }
 
-const CATEGORY_MAPPING: Record<string, string> = {
+export const CATEGORY_MAPPING: Record<string, string> = {
     'Artificial Intelligence': 'AI & Machine Learning',
     'Machine Learning': 'AI & Machine Learning',
     'Generative AI': 'AI & Machine Learning',
@@ -57,7 +57,7 @@ const CATEGORY_MAPPING: Record<string, string> = {
     'DTC': 'E-commerce & Retail',
 };
 
-function mapNicheToCategory(niche: string): string {
+export function mapNicheToCategory(niche: string): string {
     // Direct match
     if (CATEGORY_MAPPING[niche]) return CATEGORY_MAPPING[niche];
 
